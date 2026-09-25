@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Embed in the helper binary (Xcode: build setting INFOPLIST_FILE, plus
+     -sectcreate __TEXT __info_plist for SMJobBless tools) or ship beside it
+     for the scripts/install-dev.sh path. Fill SMAuthorizedClients with the
+     app's requirement via scripts/make-requirements.sh after signing. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.local.TurboBoostSwitcher.helper</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>com.local.TurboBoostSwitcher.helper</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>NSPrincipalClass</key>
+    <string></string>
+    <key>SMAuthorizedClients</key>
+    <array>
+        <string>REPLACE-WITH-APP-SIGNING-REQUIREMENT</string>
+    </array>
+</dict>
+</plist>

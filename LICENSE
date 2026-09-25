@@ -1,0 +1,16 @@
+Turbo-Boost-Switcher-Pro (community clean-room reimplementation)
+Copyright (c) 2026 the contributors.
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License version 2 as published
+by the Free Software Foundation.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License version 2 for more details.
+
+Upstream project that inspired compatible behavior (separate product, not
+included here): https://github.com/rugarciap/Turbo-Boost-Switcher (GPL-2.0)
+by Ruben Garcia Perez. Kext technique: nanoant/DisableTurboBoost.kext.
+No paid "Pro" binary was used, inspected, or modified to build this.

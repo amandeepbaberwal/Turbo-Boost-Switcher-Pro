@@ -1,0 +1,11 @@
+Attribution (GPL-2.0 project)
+
+- Upstream app + kext concept: Ruben Garcia Perez,
+  https://github.com/rugarciap/Turbo-Boost-Switcher (GPL-2.0).
+- Kext technique: nanoant, https://github.com/nanoant/DisableTurboBoost.kext
+  (writes Turbo Boost bit in MSR 0x1A0).
+- SMC temp/fan code in upstream: lavoiesl osx-cpu-temp.
+
+All new code in this directory is clean-room and GPL-2.0 to match upstream.
+No Pro binary was used, inspected, or modified. Personal use only unless you
+publish source alongside any redistribution (GPL-2.0 terms).

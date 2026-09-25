@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Merge into the forked app's Info.plist. Replace TEAMID + CN with yours
+     (generate exact strings with scripts/make-requirements.sh after signing). -->
+<dict>
+    <key>SMPrivilegedExecutables</key>
+    <dict>
+        <key>com.local.TurboBoostSwitcher.helper</key>
+        <string>identifier "com.local.TurboBoostSwitcher.helper" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "TEAMID"</string>
+    </dict>
+</dict>
