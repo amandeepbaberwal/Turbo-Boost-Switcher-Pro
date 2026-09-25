@@ -8,6 +8,7 @@ protocol HelperProtocol {
     func setTurboBoostDisabled(_ disabled: Bool, withReply reply: @escaping (Bool, String?) -> Void)
     func getTurboBoostDisabledWithReply(_ reply: @escaping (Bool) -> Void)
     func getStatsWithReply(_ reply: @escaping ([AnyHashable: Any]) -> Void)
+    func getVersionWithReply(_ reply: @escaping (String) -> Void)
 }
 
 let kMachService = "com.local.TurboBoostSwitcher.helper"
@@ -22,6 +23,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Default: bar shows only TB ON/OFF; stats live in the dropdown and
     // refresh only on open. Checkbox below opts into bar stats + polling.
     var showStatsInBar = UserDefaults.standard.object(forKey: "showStatsInBar") as? Bool ?? false
+    var installItem: NSMenuItem!
+    var uninstallItem: NSMenuItem!
+    var helperInstalled = false
+    var didPromptInstall = false
     var freqItem: NSMenuItem!
     var tempItem: NSMenuItem!
     var disabled = false
@@ -66,10 +71,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showStatsItem.state = showStatsInBar ? .on : .off
         menu.addItem(showStatsItem)
         menu.addItem(NSMenuItem.separator())
+        installItem = NSMenuItem(title: "Install System Helper…", action: #selector(runAdminInstall), keyEquivalent: "")
+        installItem.target = self
+        menu.addItem(installItem)
+        uninstallItem = NSMenuItem(title: "Uninstall Helper…", action: #selector(uninstallHelper), keyEquivalent: "")
+        uninstallItem.target = self
+        menu.addItem(uninstallItem)
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit Menu", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
-        queryStateOnly()
-        updateTimer()
+        checkHelper()
     }
 
     @objc func toggleShowStats() {
@@ -168,7 +179,160 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleItem.title = disabled ? "Enable Turbo Boost" : "Disable Turbo Boost"
     }
 
+    // MARK: - Self-install (drag-and-drop distribution)
+
+    // First launch on a fresh Mac: helper isn't there, so offer the one-time
+    // install via Apple's own admin dialog (osascript). No bundled passwords,
+    // no custom auth code — the system prompt does the work exactly once.
+    func checkHelper() {
+        let c = connect()
+        var settled = false
+        let watchdog = DispatchWorkItem {
+            if !settled {
+                settled = true
+                c.invalidate()
+                DispatchQueue.main.async { self.helperMissing() }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: watchdog)
+        proxy(c).getVersionWithReply { _ in
+            if !settled {
+                settled = true
+                watchdog.cancel()
+                c.invalidate()
+                DispatchQueue.main.async {
+                    self.helperInstalled = true
+                    self.installItem.title = "Reinstall System Helper…"
+                    self.toggleItem.isEnabled = true
+                    self.uninstallItem.isEnabled = true
+                    self.queryStateOnly()
+                    self.updateTimer()
+                }
+            }
+        }
+    }
+
+    func helperMissing() {
+        helperInstalled = false
+        known = false
+        pollTimer?.invalidate()
+        pollTimer = nil
+        statusItem.button?.title = "TB ?"
+        stateItem.title = "Helper not installed"
+        freqItem.title = "Freq: —"
+        tempItem.title = "Temp: —"
+        toggleItem.isEnabled = false
+        installItem.title = "Install System Helper…"
+        uninstallItem.isEnabled = false
+        if !didPromptInstall {
+            didPromptInstall = true
+            let a = NSAlert()
+            a.messageText = "Install system helper?"
+            a.informativeText = "TurboMenu needs a one-time helper install (Apple system password dialog). After that it never asks again."
+            a.addButton(withTitle: "Install")
+            a.addButton(withTitle: "Later")
+            NSApp.activate(ignoringOtherApps: true)
+            if a.runModal() == .alertFirstButtonReturn { runAdminInstall() }
+        }
+    }
+
+    func helperResourcePaths() -> (String, String)? {
+        guard let res = Bundle.main.resourcePath else { return nil }
+        let h = (res as NSString).appendingPathComponent("tbhelper")
+        let p = (res as NSString).appendingPathComponent("LaunchDaemon.plist")
+        let fm = FileManager.default
+        return (fm.isExecutableFile(atPath: h) && fm.fileExists(atPath: p)) ? (h, p) : nil
+    }
+
+    func showInfo(_ text: String) {
+        let a = NSAlert()
+        a.messageText = "TurboMenu"
+        a.informativeText = text
+        a.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        a.runModal()
+    }
+
+    @objc func runAdminInstall() {
+        guard let r = helperResourcePaths() else {
+            showInfo("Install files missing inside the app. Re-download the release.")
+            return
+        }
+        let sh = """
+        set -e
+        SUP='/Library/Application Support/TurboBoostSwitcher'
+        BIN='/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper'
+        PL='/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist'
+        mkdir -p "$SUP"
+        [ -f "$SUP/wanted-state.plist" ] || printf '%s\\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><true/></dict></plist>' > "$SUP/wanted-state.plist"
+        cp -f '\(r.0)' "$BIN"
+        chown root:wheel "$BIN" "$SUP" "$SUP/wanted-state.plist"
+        chmod 544 "$BIN"; chmod 755 "$SUP"; chmod 644 "$SUP/wanted-state.plist"
+        cp -f '\(r.1)' "$PL"
+        chown root:wheel "$PL"; chmod 644 "$PL"
+        launchctl bootout system "$PL" 2>/dev/null || true
+        launchctl bootstrap system "$PL"
+        """
+        let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("tbpro-install.sh")
+        do { try sh.write(toFile: tmp, atomically: true, encoding: .utf8) }
+        catch { showInfo("Cannot write installer script."); return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            p.arguments = ["-e", "do shell script \"/bin/bash '\(tmp)'\" with administrator privileges"]
+            do { try p.run() } catch {
+                DispatchQueue.main.async { self.showInfo("Could not start the installer.") }
+                return
+            }
+            p.waitUntilExit()
+            DispatchQueue.main.async {
+                if p.terminationStatus == 0 {
+                    self.didPromptInstall = false
+                    self.checkHelper()
+                    self.showInfo("Helper installed. Toggle away — no more passwords.")
+                } else {
+                    self.showInfo("Install cancelled or failed.")
+                }
+            }
+        }
+    }
+
+    @objc func uninstallHelper() {
+        let a = NSAlert()
+        a.messageText = "Uninstall helper?"
+        a.informativeText = "Removes the system daemon. Turbo Boost returns to stock behavior; the menu keeps running."
+        a.addButton(withTitle: "Uninstall")
+        a.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let sh = """
+        set -e
+        PL='/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist'
+        launchctl bootout system "$PL" 2>/dev/null || true
+        rm -f "$PL" '/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper'
+        rm -rf '/Library/Application Support/TurboBoostSwitcher'
+        """
+        let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("tbpro-uninstall.sh")
+        do { try sh.write(toFile: tmp, atomically: true, encoding: .utf8) }
+        catch { showInfo("Cannot write uninstall script."); return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            p.arguments = ["-e", "do shell script \"/bin/bash '\(tmp)'\" with administrator privileges"]
+            do { try p.run() } catch {
+                DispatchQueue.main.async { self.showInfo("Could not start the uninstaller.") }
+                return
+            }
+            p.waitUntilExit()
+            DispatchQueue.main.async {
+                self.didPromptInstall = true // don't instantly re-prompt
+                self.helperMissing()
+            }
+        }
+    }
+
     @objc func toggle() {
+        guard helperInstalled else { helperMissing(); return }
         // Chain off a fresh read: the menu-open refresh may still be in
         // flight (powermetrics ~1s), so never trust last-known state here.
         let c = connect()

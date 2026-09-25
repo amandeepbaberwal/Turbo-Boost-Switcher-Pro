@@ -22,6 +22,8 @@ cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$STAGE/files/"
 cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$STAGE/files/MenuAgent.plist"
 cp "$CLONE_DIR/build/TurboMenu" "$STAGE/TurboMenu.app/Contents/MacOS/"
 cp "$CLONE_DIR/Menu/Info.plist" "$STAGE/TurboMenu.app/Contents/"
+cp "$CLONE_DIR/build/tbhelper" "$STAGE/TurboMenu.app/Contents/Resources/"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$STAGE/TurboMenu.app/Contents/Resources/"
 codesign -s - -f "$STAGE/TurboMenu.app" 2>/dev/null || true
 cp "$CLONE_DIR/dist-src/install.sh" "$CLONE_DIR/dist-src/uninstall.sh" "$STAGE/"
 cp "$CLONE_DIR/README.md" "$CLONE_DIR/NOTICE" "$CLONE_DIR/LICENSE" "$STAGE/"
@@ -47,6 +49,8 @@ cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Library/LaunchDaemons/com.lo
 cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
 cp "$CLONE_DIR/build/TurboMenu" "$PKGROOT/Applications/TurboMenu.app/Contents/MacOS/"
 cp "$CLONE_DIR/Menu/Info.plist" "$PKGROOT/Applications/TurboMenu.app/Contents/"
+cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/"
 codesign -s - -f "$PKGROOT/Applications/TurboMenu.app" 2>/dev/null || true
 chmod 544 "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
 chmod 644 "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist" \
