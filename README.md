@@ -6,10 +6,13 @@ frequency, and temperature. No password prompts after the one install.
 
 ## Install from a release (Intel Macs only)
 
-1. Download `TurboBoostSwitcherPro-1.0-mac-intel.zip` from Releases, unzip.
-2. `cd TurboBoostSwitcherPro && ./install.sh` (asks for sudo password once).
+1. Download `TurboBoostSwitcherPro-1.0-mac-intel.pkg` from Releases.
+2. Double-click it (first time: right-click → Open, it's an unsigned
+   community build). The Installer asks for your password once.
 3. Look for `TB OFF` top-right. Sleep/wake to confirm: no prompt, ever.
-4. First launch of the menu may need right-click → Open (unsigned build).
+
+Prefer Terminal? The `.zip` next to it contains the same payload with
+`./install.sh` / `./uninstall.sh`.
 
 ## What this builds
 

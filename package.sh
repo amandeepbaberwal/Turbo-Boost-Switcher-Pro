@@ -33,5 +33,33 @@ rm -f "$ZIP"
 (cd "$CLONE_DIR/dist/stage" && zip -qr "$ZIP" TurboBoostSwitcherPro)
 shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
 
-echo "[4/4] done: $ZIP"
-ls -la "$ZIP"
+echo "[4/5] building .pkg installer (double-clickable)"
+chmod +x "$CLONE_DIR/pkg/scripts/preinstall" "$CLONE_DIR/pkg/scripts/postinstall"
+PKGROOT="$CLONE_DIR/dist/stage/pkgroot"
+rm -rf "$PKGROOT"
+mkdir -p "$PKGROOT/Library/PrivilegedHelperTools" \
+         "$PKGROOT/Library/LaunchDaemons" \
+         "$PKGROOT/Library/LaunchAgents" \
+         "$PKGROOT/Applications/TurboMenu.app/Contents/MacOS" \
+         "$PKGROOT/Applications/TurboMenu.app/Contents/Resources"
+cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
+cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+cp "$CLONE_DIR/build/TurboMenu" "$PKGROOT/Applications/TurboMenu.app/Contents/MacOS/"
+cp "$CLONE_DIR/Menu/Info.plist" "$PKGROOT/Applications/TurboMenu.app/Contents/"
+codesign -s - -f "$PKGROOT/Applications/TurboMenu.app" 2>/dev/null || true
+chmod 544 "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
+chmod 644 "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist" \
+          "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+PKG="$CLONE_DIR/dist/TurboBoostSwitcherPro-${VER}-mac-intel.pkg"
+rm -f "$PKG"
+pkgbuild --root "$PKGROOT" \
+  --scripts "$CLONE_DIR/pkg/scripts" \
+  --identifier com.local.turboboostswitcher.pro \
+  --version "$VER" \
+  --install-location / \
+  "$PKG"
+shasum -a 256 "$PKG" | tee "$PKG.sha256"
+
+echo "[5/5] done:"
+ls -la "$ZIP" "$PKG"

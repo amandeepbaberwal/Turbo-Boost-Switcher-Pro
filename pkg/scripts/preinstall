@@ -1,0 +1,8 @@
+#!/bin/bash
+# preinstall — runs as root before payload lands. Best-effort unload of any
+# previous install so upgrades are clean. Never fails the install.
+LAUNCH_PLIST="/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
+if [ -f "$LAUNCH_PLIST" ]; then
+  launchctl bootout system "$LAUNCH_PLIST" 2>/dev/null || true
+fi
+exit 0

@@ -1,0 +1,35 @@
+#!/bin/bash
+# postinstall — runs as root after payload lands.
+SUPPORT_DIR="/Library/Application Support/TurboBoostSwitcher"
+HELPER_BIN="/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
+LAUNCH_PLIST="/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
+AGENT_PLIST="/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+
+# 1. desired state: default turbo OFF, but never clobber an upgrade's choice
+if [ ! -f "$SUPPORT_DIR/wanted-state.plist" ]; then
+  mkdir -p "$SUPPORT_DIR"
+  printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><true/></dict></plist>' > "$SUPPORT_DIR/wanted-state.plist"
+fi
+chown root:wheel "$SUPPORT_DIR" "$SUPPORT_DIR/wanted-state.plist"
+chmod 755 "$SUPPORT_DIR"; chmod 644 "$SUPPORT_DIR/wanted-state.plist"
+
+# 2. permissions the Installer may not have preserved
+chown root:wheel "$HELPER_BIN"; chmod 544 "$HELPER_BIN"
+chown root:wheel "$LAUNCH_PLIST"; chmod 644 "$LAUNCH_PLIST"
+chown root:wheel "$AGENT_PLIST"; chmod 644 "$AGENT_PLIST"
+
+# 3. start the system daemon (restores turbo OFF by itself ~2s later)
+launchctl bootstrap system "$LAUNCH_PLIST" 2>/dev/null || true
+launchctl enable "system/com.local.TurboBoostSwitcher.helper" 2>/dev/null || true
+
+# 4. start the menu agent for the console user (double-click installs never touch Terminal)
+CONSOLE_USER=$(stat -f%Su /dev/console 2>/dev/null || echo "")
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
+  CONSOLE_UID=$(id -u "$CONSOLE_USER" 2>/dev/null || echo "")
+  if [ -n "$CONSOLE_UID" ]; then
+    launchctl bootstrap "gui/$CONSOLE_UID" "$AGENT_PLIST" 2>/dev/null || true
+    launchctl enable "gui/$CONSOLE_UID/com.local.TurboBoostMenu" 2>/dev/null || true
+  fi
+fi
+
+exit 0
