@@ -248,30 +248,48 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
     reply(TBHelperVersion);
 }
 
+- (void)currentPL1:(long *)a PL2:(long *)b {
+    // Single source of display truth: live chip values when readable,
+    // persisted intent otherwise. Display can never disagree with silicon.
+    [self ensurePLState];
+    if ([self readLivePowerLimitsPL1:a PL2:b]) return;
+    if (a) *a = [self persistedPL1];
+    if (b) *b = [self persistedPL2];
+}
+
 - (void)setPowerLimitsPL1:(long)pl1 PL2:(long)pl2
                 withReply:(void (^)(BOOL, NSString * _Nullable))reply {
     [self ensurePLState];
+    long c1 = pl1 < 5 ? 5 : (pl1 > 125 ? 125 : pl1);
+    long c2 = pl2 < 10 ? 10 : (pl2 > 200 ? 200 : pl2);
     NSString *msg = nil;
-    BOOL ok = [self applyPowerLimitsPL1:pl1 PL2:pl2 msg:&msg];
-    if (ok) {
-        [self persistPL1:pl1 PL2:pl2];
-        // Read back what the chip actually accepted (it may clamp).
-        long r1 = 0, r2 = 0;
-        if ([self readLivePowerLimitsPL1:&r1 PL2:&r2]) {
-            msg = [NSString stringWithFormat:@"%@ | chip reports PL1:%ldW PL2:%ldW",
-                   msg ?: @"", r1, r2];
-        }
+    BOOL cliOK = [self applyPowerLimitsPL1:pl1 PL2:pl2 msg:&msg];
+    // Reconcile with silicon: the CLI occasionally errors AFTER the chip
+    // applied (partial failure). Persist live truth, not assumptions.
+    long r1 = 0, r2 = 0;
+    BOOL live = [self readLivePowerLimitsPL1:&r1 PL2:&r2];
+    BOOL ok;
+    if (live && r1 == c1 && r2 == c2) {
+        ok = YES; // applied (even if the CLI complained)
+        msg = [NSString stringWithFormat:@"%@ | chip reports PL1:%ldW PL2:%ldW",
+               msg ?: @"", r1, r2];
+    } else if (live) {
+        ok = cliOK; // chip disagrees: trust the CLI verdict, keep live visible
+        msg = [NSString stringWithFormat:@"%@ | chip still PL1:%ldW PL2:%ldW",
+               msg ?: @"", r1, r2];
+    } else {
+        ok = cliOK;
     }
+    if (live) [self persistPL1:r1 PL2:r2];
+    else if (ok) [self persistPL1:c1 PL2:c2];
     NSLog(@"[TBHelper] setPL %ld/%ld -> %d (%@)", pl1, pl2, ok, msg);
     reply(ok, msg);
 }
 
 - (void)getPowerLimitsWithReply:(void (^)(long, long))reply {
-    [self ensurePLState];
-    // Prefer live chip truth when readable; persisted intent otherwise.
-    long r1 = 0, r2 = 0;
-    if ([self readLivePowerLimitsPL1:&r1 PL2:&r2]) { reply(r1, r2); return; }
-    reply([self persistedPL1], [self persistedPL2]);
+    long a = 0, b = 0;
+    [self currentPL1:&a PL2:&b];
+    reply(a, b);
 }
 
 - (void)getStatsWithReply:(void (^)(NSDictionary * _Nonnull))reply {
@@ -343,21 +361,22 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
         NSLog(@"[TBHelper] powermetrics failed (%d)", st);
     }
     // Health flags so the menu can explain itself instead of showing bare n/a.
-    BOOL vsCLI = [[NSFileManager defaultManager] isExecutableFileAtPath:kVSCLIPath];
-    NSString *sipOut = nil;
+    BOOL vsCLI = [[NSFileManager defaultManager] isExecutableFileAtPath:kVSCLIPath];    NSString *sipOut = nil;
     [self runTask:@"/usr/bin/csrutil" args:@[@"status"] output:&sipOut timeout:5];
     NSString *sip = @"unknown";
     if (sipOut) {
         if ([sipOut rangeOfString:@"Kext Signing: disabled"].location != NSNotFound) sip = @"exempt";
         else if ([sipOut rangeOfString:@"System Integrity Protection status: enabled."].location != NSNotFound) sip = @"full";
     }
+    long livePL1 = 0, livePL2 = 0;
+    [self currentPL1:&livePL1 PL2:&livePL2];
     reply(@{@"disabled": @(disabled),
             @"freqMaxMHz": @(maxMHz),
             @"freqAvgMHz": @(nCPU ? (long)(sumMHz / nCPU) : -1),
             @"tempC": @(tempC),
             @"pkgW": @(pkgW),
-            @"pl1": @([self persistedPL1]),
-            @"pl2": @([self persistedPL2]),
+            @"pl1": @(livePL1),
+            @"pl2": @(livePL2),
             @"vsKext": @([self isVSKextLoaded]),
             @"vsCLI": @(vsCLI),
             @"sip": sip,
