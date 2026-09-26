@@ -25,6 +25,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Default: bar shows only TB ON/OFF; stats live in the dropdown and
     // refresh only on open. Checkbox below opts into bar stats + polling.
     var showStatsInBar = UserDefaults.standard.object(forKey: "showStatsInBar") as? Bool ?? false
+    var pollInterval: Double = {
+        let v = UserDefaults.standard.object(forKey: "pollInterval") as? Double ?? 5.0
+        return min(max(v, 1.0), 60.0)
+    }()
     var installItem: NSMenuItem!
     var uninstallItem: NSMenuItem!
     var settingsWC: SettingsWC?
@@ -106,8 +110,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pollTimer?.invalidate()
         pollTimer = nil
         if showStatsInBar {
-            pollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in self.refresh() }
+            pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { _ in self.refresh() }
         }
+    }
+
+    func setPollInterval(_ v: Double) {
+        pollInterval = min(max(v, 1.0), 60.0)
+        UserDefaults.standard.set(pollInterval, forKey: "pollInterval")
+        updateTimer()
+        if showStatsInBar { refresh() }
     }
 
     // Menu delegate: fetch fresh stats only when the user opens the menu.

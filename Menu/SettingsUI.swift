@@ -14,6 +14,8 @@ class SettingsWC: NSWindowController {
     var sipLbl: NSTextField!
     var kextLbl: NSTextField!
     var helperLbl: NSTextField!
+    var refreshSlider: NSSlider!
+    var refreshVal: NSTextField!
     var curPL1 = 100
     var curPL2 = 125
 
@@ -95,6 +97,12 @@ class SettingsWC: NSWindowController {
         row.addView(recheck, in: .leading)
         stack.addView(row, in: .leading)
         stack.addView(label("Lower = cooler + quieter, slower sustained. Bursts stay snappy.", bold: false), in: .leading)
+        stack.addView(label("Menu bar live stats refresh:", bold: true), in: .leading)
+        refreshSlider = sliderRow(stack: stack, name: "Interval", min: 1, max: 60, valLbl: &refreshVal)
+        refreshSlider.target = self
+        refreshSlider.action = #selector(refreshMoved)
+        refreshSlider.isContinuous = false
+        stack.addView(label("1s = constant sampling (costs CPU); 5s default. Off unless the bar-stats checkbox is ticked.", bold: false), in: .leading)
     }
 
     func sliderRow(stack: NSStackView, name: String, min: Double, max: Double, valLbl: inout NSTextField!) -> NSSlider {
@@ -119,12 +127,22 @@ class SettingsWC: NSWindowController {
         pl2Val.stringValue = "\(Int(pl2Slider.doubleValue)) W"
     }
 
+    @objc func refreshMoved() {
+        let v = refreshSlider.doubleValue
+        refreshVal.stringValue = "\(Int(v))s"
+        app?.setPollInterval(v)
+    }
+
     func setDot(_ l: NSTextField, ok: Bool, text: String) {
         l.stringValue = (ok ? "● " : "○ ") + text
         l.textColor = ok ? NSColor.systemGreen : NSColor.systemRed
     }
 
     @objc func refreshAll() {
+        if let app = app {
+            refreshSlider.doubleValue = app.pollInterval
+            refreshVal.stringValue = "\(Int(app.pollInterval))s"
+        }
         // 1. SIP kext exemption (unprivileged read)
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/sbin/csrutil")
