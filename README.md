@@ -36,7 +36,7 @@ project rebuilds equivalent functionality from scratch.
 
 ## What this builds
 
-- `Helper/` — root XPC helper (`com.local.TurboBoostSwitcher.helper`).
+- `Helper/` — root XPC helper (`com.local.MacTurboDisabler.helper`).
   Runs as root, owns all `kextload`/`kextunload` calls, persists the desired
   state, and re-applies it on boot AND on wake (via IOKit power
   notifications). Asks for no passwords itself — it is *already* root.

@@ -3,7 +3,7 @@
 #import "TurboBoostHelperProtocol.h"
 #import <ServiceManagement/ServiceManagement.h>
 
-static NSString * const kHelperLabel = @"com.local.TurboBoostSwitcher.helper";
+static NSString * const kHelperLabel = @"com.local.MacTurboDisabler.helper";
 
 @implementation HelperManager
 

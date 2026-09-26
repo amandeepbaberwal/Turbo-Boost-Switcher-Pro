@@ -3,7 +3,7 @@
 // Clean-room code, GPL-2.0 to match upstream rugarciap/Turbo-Boost-Switcher.
 #import <Foundation/Foundation.h>
 
-static NSString * const TBHelperMachServiceName = @"com.local.TurboBoostSwitcher.helper";
+static NSString * const TBHelperMachServiceName = @"com.local.MacTurboDisabler.helper";
 static NSString * const TBHelperVersion = @"2.0.0";
 
 @protocol TurboBoostHelperProtocol

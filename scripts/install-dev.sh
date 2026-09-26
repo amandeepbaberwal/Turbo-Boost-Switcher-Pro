@@ -5,8 +5,8 @@
 set -euo pipefail
 
 SUPPORT_DIR="/Library/Application Support/TurboBoostSwitcher"
-HELPER_BIN="/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
-LAUNCH_PLIST="/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
+HELPER_BIN="/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper"
+LAUNCH_PLIST="/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLONE_DIR="$(dirname "$SCRIPT_DIR")"
 
@@ -47,10 +47,12 @@ echo "[3/5] installing LaunchDaemon"
 cp -f "$CLONE_DIR/Helper/LaunchDaemon.plist" "$LAUNCH_PLIST"
 chown root:wheel "$LAUNCH_PLIST"; chmod 644 "$LAUNCH_PLIST"
 
-echo "[4/5] (re)starting daemon"
+echo "[4/5] (re)starting daemon (retiring pre-rename daemon if present)"
+launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
+rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist /Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper
 launchctl bootout system "$LAUNCH_PLIST" 2>/dev/null || true
 launchctl bootstrap system "$LAUNCH_PLIST"
-launchctl enable "system/com.local.TurboBoostSwitcher.helper" 2>/dev/null || true
+launchctl enable "system/com.local.MacTurboDisabler.helper" 2>/dev/null || true
 
 echo "[5/5] applying desired state now"
 sleep 3

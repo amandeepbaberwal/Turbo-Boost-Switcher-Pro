@@ -157,7 +157,9 @@ class SettingsWC: NSWindowController {
         set -e
         /sbin/kextunload -b com.rugarciap.DisableTurboBoost 2>/dev/null || true
         /sbin/kextunload -b com.sicreative.VoltageShift 2>/dev/null || true
+        /bin/launchctl bootout system /Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist 2>/dev/null || true
         /bin/launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
+        rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist /Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper
         CU=$(stat -f%Su /dev/console 2>/dev/null || echo "")
         if [ -n "$CU" ] && [ "$CU" != "root" ]; then
           CUID=$(id -u "$CU" 2>/dev/null || echo "")
@@ -167,8 +169,8 @@ class SettingsWC: NSWindowController {
           fi
           rm -f "/Users/$CU/Library/LaunchAgents/com.local.MacTurboDisabler.plist" "/Users/$CU/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
         fi
-        rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist
-        rm -f /Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper
+        rm -f /Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist
+        rm -f /Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper
         rm -rf "/Library/Application Support/TurboBoostSwitcher"
         rm -f /var/log/tbhelper.log
         rm -rf /Library/Extensions/VoltageShift.kext

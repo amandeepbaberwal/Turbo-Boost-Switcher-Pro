@@ -1,9 +1,9 @@
 #!/bin/bash
 # postinstall — runs as root after payload lands.
 SUPPORT_DIR="/Library/Application Support/TurboBoostSwitcher"
-HELPER_BIN="/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
-LAUNCH_PLIST="/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
-AGENT_PLIST="/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+HELPER_BIN="/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper"
+LAUNCH_PLIST="/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist"
+AGENT_PLIST="/Library/LaunchAgents/com.local.MacTurboDisabler.plist"
 
 # 1. desired state: default turbo OFF, but never clobber an upgrade's choice
 if [ ! -f "$SUPPORT_DIR/wanted-state.plist" ]; then
@@ -25,9 +25,12 @@ chmod -R 755 /Library/Extensions/VoltageShift.kext
 # Never fail the install over it.
 /usr/bin/kextutil /Library/Extensions/VoltageShift.kext 2>/dev/null || true
 
-# 3. start the system daemon (restores turbo OFF by itself ~2s later)
+# 3. start the system daemon (restores turbo OFF by itself ~2s later).
+# Retire the pre-rename daemon label if present.
+launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
+rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist /Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper
 launchctl bootstrap system "$LAUNCH_PLIST" 2>/dev/null || true
-launchctl enable "system/com.local.TurboBoostSwitcher.helper" 2>/dev/null || true
+launchctl enable "system/com.local.MacTurboDisabler.helper" 2>/dev/null || true
 
 # 4. start the menu agent for the console user (double-click installs never touch Terminal)
 # Also retire the pre-rename TurboMenu agent/app if present.

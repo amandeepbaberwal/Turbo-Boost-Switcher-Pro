@@ -49,9 +49,9 @@ mkdir -p "$PKGROOT/Library/PrivilegedHelperTools" \
          "$PKGROOT/Library/Application Support/TurboBoostSwitcher" \
          "$PKGROOT/Applications/MacTurboDisabler.app/Contents/MacOS" \
          "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources"
-cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
-cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
-cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist"
+cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$PKGROOT/Library/LaunchAgents/com.local.MacTurboDisabler.plist"
 cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$PKGROOT/Library/Application Support/TurboBoostSwitcher/voltageshift"
 cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$PKGROOT/Library/Extensions/VoltageShift.kext"
 cp "$CLONE_DIR/build/MacTurboDisabler" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/MacOS/"
@@ -62,10 +62,10 @@ cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$PKGROOT/Applications/MacTurboDisa
 rm -rf "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/VoltageShift.kext"
 cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/"
 codesign -s - -f "$PKGROOT/Applications/MacTurboDisabler.app" 2>/dev/null || true
-chmod 544 "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
+chmod 544 "$PKGROOT/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper"
 chmod 755 "$PKGROOT/Library/Application Support/TurboBoostSwitcher/voltageshift"
-chmod 644 "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist" \
-          "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+chmod 644 "$PKGROOT/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist" \
+          "$PKGROOT/Library/LaunchAgents/com.local.MacTurboDisabler.plist"
 PKG="$CLONE_DIR/dist/MacTurboDisabler-${VER}-mac-intel.pkg"
 rm -f "$PKG"
 pkgbuild --root "$PKGROOT" \

@@ -7,11 +7,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.local.TurboBoostSwitcher.helper</string>
+    <string>com.local.MacTurboDisabler.helper</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>com.local.TurboBoostSwitcher.helper</string>
+    <string>com.local.MacTurboDisabler.helper</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>NSPrincipalClass</key>

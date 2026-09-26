@@ -20,7 +20,7 @@ let args = CommandLine.arguments.dropFirst()
 
 func fail(_ m: String) -> Never { fputs("FAIL \(m)\n", stderr); Darwin.exit(1) }
 
-let c = NSXPCConnection(machServiceName: "com.local.TurboBoostSwitcher.helper", options: .privileged)
+let c = NSXPCConnection(machServiceName: "com.local.MacTurboDisabler.helper", options: .privileged)
 c.remoteObjectInterface = NSXPCInterface(with: HelperProtocol.self)
 c.resume()
 let p = c.remoteObjectProxyWithErrorHandler { e in

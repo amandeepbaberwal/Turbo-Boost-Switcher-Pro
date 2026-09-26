@@ -3,14 +3,14 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.local.TurboBoostSwitcher.helper</string>
+    <string>com.local.MacTurboDisabler.helper</string>
     <key>MachServices</key>
     <dict>
-        <key>com.local.TurboBoostSwitcher.helper</key>
+        <key>com.local.MacTurboDisabler.helper</key>
         <true/>
     </dict>
     <key>Program</key>
-    <string>/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper</string>
+    <string>/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

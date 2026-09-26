@@ -1,8 +1,9 @@
 #!/bin/bash
 # preinstall — runs as root before payload lands. Best-effort unload of any
 # previous install so upgrades are clean. Never fails the install.
-LAUNCH_PLIST="/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
+LAUNCH_PLIST="/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist"
 if [ -f "$LAUNCH_PLIST" ]; then
   launchctl bootout system "$LAUNCH_PLIST" 2>/dev/null || true
 fi
+launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
 exit 0

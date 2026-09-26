@@ -13,7 +13,7 @@ protocol HelperProtocol {
     func getPowerLimitsWithReply(_ reply: @escaping (Int, Int) -> Void)
 }
 
-let kMachService = "com.local.TurboBoostSwitcher.helper"
+let kMachService = "com.local.MacTurboDisabler.helper"
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
@@ -316,8 +316,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var sh = """
         set -e
         SUP='/Library/Application Support/TurboBoostSwitcher'
-        BIN='/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper'
-        PL='/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist'
+        BIN='/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper'
+        PL='/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist'
         mkdir -p "$SUP"
         [ -f "$SUP/wanted-state.plist" ] || printf '%s\\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><true/></dict></plist>' > "$SUP/wanted-state.plist"
         cp -f '\(r.0)' "$BIN"
@@ -326,6 +326,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         cp -f '\(r.1)' "$PL"
         chown root:wheel "$PL"; chmod 644 "$PL"
         launchctl bootout system "$PL" 2>/dev/null || true
+        launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
+        rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist /Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper
         launchctl bootstrap system "$PL"
         """
         if let v = vs {
@@ -373,9 +375,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard a.runModal() == .alertFirstButtonReturn else { return }
         let sh = """
         set -e
-        PL='/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist'
+        PL='/Library/LaunchDaemons/com.local.MacTurboDisabler.helper.plist'
         launchctl bootout system "$PL" 2>/dev/null || true
-        rm -f "$PL" '/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper'
+        rm -f "$PL" '/Library/PrivilegedHelperTools/com.local.MacTurboDisabler.helper'
+        launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
+        rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist '/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper'
         rm -rf '/Library/Application Support/TurboBoostSwitcher'
         """
         let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("tbpro-uninstall.sh")
