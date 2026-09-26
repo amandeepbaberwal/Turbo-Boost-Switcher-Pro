@@ -19,6 +19,7 @@ class SettingsWC: NSWindowController {
     var uninstallBtn: NSButton!
     var refreshSlider: NSSlider!
     var refreshVal: NSTextField!
+    var loginSwitch: NSButton!
     var curPL1 = 100
     var curPL2 = 125
     var vsOK = false
@@ -138,7 +139,50 @@ class SettingsWC: NSWindowController {
         refreshSlider.action = #selector(refreshMoved)
         refreshSlider.isContinuous = true // live label while dragging (commit is cheap: timer restart only)
         s3.addView(label("1s = constant sampling (costs CPU); 5s default. Off unless the bar-stats checkbox is ticked.", bold: false), in: .leading)
+        loginSwitch = NSButton(checkboxWithTitle: "Open at login", target: self, action: #selector(loginToggled))
+        s3.addView(loginSwitch, in: .leading)
         outer.addView(box3, in: .leading)
+    }
+
+    var agentLabel: String { "com.local.MacTurboDisabler" }
+
+    func agentPlistDest() -> String {
+        (NSHomeDirectory() as NSString).appendingPathComponent("Library/LaunchAgents/\(agentLabel).plist")
+    }
+
+    func runLC(_ args: String...) -> Int32 {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        p.arguments = args
+        p.standardOutput = Pipe()
+        p.standardError = Pipe()
+        do { try p.run() } catch { return -1 }
+        p.waitUntilExit()
+        return p.terminationStatus
+    }
+
+    func loginAgentLoaded() -> Bool {
+        runLC("print", "gui/\(getuid())/\(agentLabel)") == 0
+    }
+
+    @objc func loginToggled() {
+        if loginSwitch.state == .on {
+            guard let res = Bundle.main.resourcePath else { loginSwitch.state = .off; return }
+            let src = (res as NSString).appendingPathComponent("LaunchAgent.plist")
+            let dest = agentPlistDest()
+            do {
+                try FileManager.default.createDirectory(atPath: (dest as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
+                if FileManager.default.fileExists(atPath: dest) { try FileManager.default.removeItem(atPath: dest) }
+                try FileManager.default.copyItem(atPath: src, toPath: dest)
+            } catch { loginSwitch.state = .off; return }
+            _ = runLC("enable", "gui/\(getuid())/\(agentLabel)")
+            _ = runLC("bootstrap", "gui/\(getuid())", dest)
+            if !loginAgentLoaded() { loginSwitch.state = .off }
+        } else {
+            _ = runLC("bootout", "gui/\(getuid())/\(agentLabel)")
+            _ = runLC("disable", "gui/\(getuid())/\(agentLabel)")
+            try? FileManager.default.removeItem(atPath: agentPlistDest())
+        }
     }
 
     @objc func reinstallTapped() { app?.runAdminInstall() }
@@ -240,6 +284,7 @@ class SettingsWC: NSWindowController {
             reinstallBtn.isEnabled = true
             uninstallBtn.isEnabled = app.helperInstalled
         }
+        loginSwitch.state = loginAgentLoaded() ? .on : .off
         // 1. SIP kext exemption (unprivileged read)
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/csrutil")

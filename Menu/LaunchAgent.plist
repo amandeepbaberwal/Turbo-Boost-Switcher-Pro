@@ -11,6 +11,10 @@
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <!-- Restart on crash, but NOT on clean user Quit (exit 0). -->
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
 </dict>
 </plist>
