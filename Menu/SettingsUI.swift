@@ -112,9 +112,11 @@ class SettingsWC: NSWindowController {
         s1.addView(scroll, in: .leading)
 
         reinstallBtn = NSButton(title: "Reinstall Helper…", target: self, action: #selector(reinstallTapped))
-        uninstallBtn = NSButton(title: "Uninstall…", target: self, action: #selector(uninstallTapped))
+        uninstallBtn = NSButton(title: "Remove Helper…", target: self, action: #selector(uninstallTapped))
+        let removeAllBtn = NSButton(title: "Remove Everything…", target: self, action: #selector(uninstallEverything))
+        removeAllBtn.bezelColor = NSColor.systemRed
         let recheck = NSButton(title: "Recheck", target: self, action: #selector(refreshAll))
-        s1.addView(hrow(reinstallBtn, uninstallBtn, recheck), in: .leading)
+        s1.addView(hrow(reinstallBtn, uninstallBtn, removeAllBtn, recheck), in: .leading)
         outer.addView(box1, in: .leading)
 
         // Box 2 — power limits
@@ -141,6 +143,59 @@ class SettingsWC: NSWindowController {
 
     @objc func reinstallTapped() { app?.runAdminInstall() }
     @objc func uninstallTapped() { app?.uninstallHelper() }
+
+    @objc func uninstallEverything() {
+        let a = NSAlert()
+        a.messageText = "Remove everything?"
+        a.informativeText = "Removes the helper daemon, this menu app, the VoltageShift kext, all login items and settings. Turbo Boost returns to stock; power limits fully clear on next reboot. This cannot be undone — reinstall from the release .pkg to come back."
+        a.addButton(withTitle: "Remove Everything")
+        a.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let sh = """
+        set -e
+        /sbin/kextunload -b com.rugarciap.DisableTurboBoost 2>/dev/null || true
+        /sbin/kextunload -b com.sicreative.VoltageShift 2>/dev/null || true
+        /bin/launchctl bootout system /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist 2>/dev/null || true
+        CU=$(stat -f%Su /dev/console 2>/dev/null || echo "")
+        if [ -n "$CU" ] && [ "$CU" != "root" ]; then
+          CUID=$(id -u "$CU" 2>/dev/null || echo "")
+          if [ -n "$CUID" ]; then
+            /bin/launchctl bootout "gui/$CUID/com.local.MacTurboDisabler" 2>/dev/null || true
+            /bin/launchctl bootout "gui/$CUID/com.local.TurboBoostMenu" 2>/dev/null || true
+          fi
+          rm -f "/Users/$CU/Library/LaunchAgents/com.local.MacTurboDisabler.plist" "/Users/$CU/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
+        fi
+        rm -f /Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist
+        rm -f /Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper
+        rm -rf "/Library/Application Support/TurboBoostSwitcher"
+        rm -f /var/log/tbhelper.log
+        rm -rf /Library/Extensions/VoltageShift.kext
+        rm -f /Library/LaunchAgents/com.local.MacTurboDisabler.plist /Library/LaunchAgents/com.local.TurboBoostMenu.plist
+        rm -rf /Applications/MacTurboDisabler.app /Applications/TurboMenu.app
+        """
+        let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("tbpro-nuke.sh")
+        do { try sh.write(toFile: tmp, atomically: true, encoding: .utf8) }
+        catch { showInfo("Cannot write removal script."); return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            p.arguments = ["-e", "do shell script \"/bin/bash '\(tmp)'\" with administrator privileges"]
+            do { try p.run() } catch {
+                DispatchQueue.main.async { self.showInfo("Could not start removal.") }
+                return
+            }
+            p.waitUntilExit()
+            DispatchQueue.main.async {
+                if p.terminationStatus == 0 {
+                    self.showInfo("Everything removed. The menu will now quit; log out and back in to clear Login Items.")
+                    NSApp.terminate(nil)
+                } else {
+                    self.showInfo("Removal cancelled or failed.")
+                }
+            }
+        }
+    }
 
     func sliderRow(stack: NSStackView, name: String, min: Double, max: Double, valLbl: inout NSTextField!) -> NSSlider {
         let row = NSStackView()
