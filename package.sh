@@ -3,7 +3,7 @@
 # Usage: ./package.sh   → dist/MacTurboDisabler-<ver>-mac-intel.{dmg-pkg-zip} + .sha256
 set -euo pipefail
 CLONE_DIR="$(cd "$(dirname "$0")" && pwd)"
-VER="2.0.0"
+VER="2.1.0"
 STAGE="$CLONE_DIR/dist/stage/MacTurboDisabler"
 mkdir -p "$CLONE_DIR/build" "$CLONE_DIR/dist"
 
