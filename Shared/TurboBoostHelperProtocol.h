@@ -4,7 +4,7 @@
 #import <Foundation/Foundation.h>
 
 static NSString * const TBHelperMachServiceName = @"com.local.MacTurboDisabler.helper";
-static NSString * const TBHelperVersion = @"2.1.0";
+static NSString * const TBHelperVersion = @"2.1.1";
 
 @protocol TurboBoostHelperProtocol
 
