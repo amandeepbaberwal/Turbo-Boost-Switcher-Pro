@@ -152,6 +152,7 @@ class SettingsWC: NSWindowController {
         a.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)
         guard a.runModal() == .alertFirstButtonReturn else { return }
+        guard let app = app else { return }
         let sh = """
         set -e
         /sbin/kextunload -b com.rugarciap.DisableTurboBoost 2>/dev/null || true
@@ -176,22 +177,22 @@ class SettingsWC: NSWindowController {
         """
         let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("tbpro-nuke.sh")
         do { try sh.write(toFile: tmp, atomically: true, encoding: .utf8) }
-        catch { showInfo("Cannot write removal script."); return }
+        catch { app.showInfo("Cannot write removal script."); return }
         DispatchQueue.global(qos: .userInitiated).async {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
             p.arguments = ["-e", "do shell script \"/bin/bash '\(tmp)'\" with administrator privileges"]
             do { try p.run() } catch {
-                DispatchQueue.main.async { self.showInfo("Could not start removal.") }
+                DispatchQueue.main.async { app.showInfo("Could not start removal.") }
                 return
             }
             p.waitUntilExit()
             DispatchQueue.main.async {
                 if p.terminationStatus == 0 {
-                    self.showInfo("Everything removed. The menu will now quit; log out and back in to clear Login Items.")
+                    app.showInfo("Everything removed. The menu will now quit; log out and back in to clear Login Items.")
                     NSApp.terminate(nil)
                 } else {
-                    self.showInfo("Removal cancelled or failed.")
+                    app.showInfo("Removal cancelled or failed.")
                 }
             }
         }
