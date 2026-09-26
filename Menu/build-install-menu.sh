@@ -8,13 +8,18 @@ AGENT=~/Library/LaunchAgents/com.local.TurboBoostMenu.plist
 
 echo "[1/4] compiling"
 mkdir -p "$CLONE_DIR/build"
-xcrun swiftc -O -framework Cocoa "$CLONE_DIR/Menu/TurboMenu.swift" -o "$CLONE_DIR/build/TurboMenu"
+xcrun swiftc -O -framework Cocoa "$CLONE_DIR/Menu/"*.swift -o "$CLONE_DIR/build/TurboMenu"
 
 echo "[2/4] assembling .app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$CLONE_DIR/build/TurboMenu" "$APP/Contents/MacOS/"
 cp "$CLONE_DIR/Menu/Info.plist" "$APP/Contents/"
+cp "$CLONE_DIR/build/tbhelper" "$APP/Contents/Resources/"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$APP/Contents/Resources/"
+cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$APP/Contents/Resources/"
+rm -rf "$APP/Contents/Resources/VoltageShift.kext"
+cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$APP/Contents/Resources/"
 codesign -s - -f "$APP" 2>/dev/null || true
 
 echo "[3/4] installing LaunchAgent (auto-start at login)"

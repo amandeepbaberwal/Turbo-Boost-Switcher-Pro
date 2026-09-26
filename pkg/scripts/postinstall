@@ -17,6 +17,13 @@ chmod 755 "$SUPPORT_DIR"; chmod 644 "$SUPPORT_DIR/wanted-state.plist"
 chown root:wheel "$HELPER_BIN"; chmod 544 "$HELPER_BIN"
 chown root:wheel "$LAUNCH_PLIST"; chmod 644 "$LAUNCH_PLIST"
 chown root:wheel "$AGENT_PLIST"; chmod 644 "$AGENT_PLIST"
+chown root:wheel "$SUPPORT_DIR/voltageshift"; chmod 755 "$SUPPORT_DIR/voltageshift"
+chown -R root:wheel /Library/Extensions/VoltageShift.kext
+chmod -R 755 /Library/Extensions/VoltageShift.kext
+# Best-effort: load VoltageShift kext now. On a fresh machine this pends
+# System Settings approval + reboot; the Setup panel guides the user.
+# Never fail the install over it.
+/usr/bin/kextutil /Library/Extensions/VoltageShift.kext 2>/dev/null || true
 
 # 3. start the system daemon (restores turbo OFF by itself ~2s later)
 launchctl bootstrap system "$LAUNCH_PLIST" 2>/dev/null || true

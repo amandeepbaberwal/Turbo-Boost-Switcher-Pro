@@ -24,7 +24,16 @@ static NSString * const TBHelperVersion = @"1.0";
 //           @"freqMaxMHz": @(long, -1 unknown),
 //           @"freqAvgMHz": @(long, -1 unknown),
 //           @"tempC": @(double, -1 unknown),
-//           @"pkgW": @(double package power in watts, -1 unknown)}
+//           @"pkgW": @(double package power in watts, -1 unknown),
+//           @"pl1": @(long persisted PL1 watts),
+//           @"pl2": @(long persisted PL2 watts),
+//           @"vsKext": @(BOOL VoltageShift kext loaded)}
 - (void)getStatsWithReply:(void (^)(NSDictionary * _Nonnull stats))reply;
+
+// Package power limits (watts). Persists + applies at boot/wake via the
+// vendored voltageshift CLI (needs its kext: see Setup).
+- (void)setPowerLimitsPL1:(long)pl1 PL2:(long)pl2
+                withReply:(void (^)(BOOL success, NSString * _Nullable message))reply;
+- (void)getPowerLimitsWithReply:(void (^)(long pl1, long pl2))reply;
 
 @end

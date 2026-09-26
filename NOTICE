@@ -6,6 +6,7 @@ Attribution (GPL-2.0 project)
   (writes Turbo Boost bit in MSR 0x1A0).
 - SMC temp/fan code in upstream: lavoiesl osx-cpu-temp.
 
-All new code in this directory is clean-room and GPL-2.0 to match upstream.
+All new code in this directory is clean-room and GPL-3.0 (combined work,
+see LICENSE) to match the VoltageShift GPL-3.0 component.
 No Pro binary was used, inspected, or modified. Personal use only unless you
-publish source alongside any redistribution (GPL-2.0 terms).
+publish source alongside any redistribution (GPL-3.0 terms).

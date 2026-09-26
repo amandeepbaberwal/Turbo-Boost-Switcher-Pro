@@ -9,6 +9,8 @@ protocol HelperProtocol {
     func getTurboBoostDisabledWithReply(_ reply: @escaping (Bool) -> Void)
     func getStatsWithReply(_ reply: @escaping ([AnyHashable: Any]) -> Void)
     func getVersionWithReply(_ reply: @escaping (String) -> Void)
+    func setPowerLimitsPL1(_ pl1: Int, PL2 pl2: Int, withReply reply: @escaping (Bool, String?) -> Void)
+    func getPowerLimitsWithReply(_ reply: @escaping (Int, Int) -> Void)
 }
 
 let kMachService = "com.local.TurboBoostSwitcher.helper"
@@ -25,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var showStatsInBar = UserDefaults.standard.object(forKey: "showStatsInBar") as? Bool ?? false
     var installItem: NSMenuItem!
     var uninstallItem: NSMenuItem!
+    var settingsWC: SettingsWC?
     var helperInstalled = false
     var didPromptInstall = false
     var freqItem: NSMenuItem!
@@ -82,6 +85,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         uninstallItem = NSMenuItem(title: "Uninstall Helper…", action: #selector(uninstallHelper), keyEquivalent: "")
         uninstallItem.target = self
         menu.addItem(uninstallItem)
+        let settingsItem = NSMenuItem(title: "Power & Setup…", action: #selector(showSettings), keyEquivalent: "")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit Menu", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
@@ -263,12 +269,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         a.runModal()
     }
 
+    func vsResourcePaths() -> (String, String)? {
+        guard let res = Bundle.main.resourcePath else { return nil }
+        let cli = (res as NSString).appendingPathComponent("voltageshift")
+        let kx = (res as NSString).appendingPathComponent("VoltageShift.kext")
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        guard fm.isExecutableFile(atPath: cli),
+              fm.fileExists(atPath: kx, isDirectory: &isDir), isDir.boolValue else { return nil }
+        return (cli, kx)
+    }
+
     @objc func runAdminInstall() {
         guard let r = helperResourcePaths() else {
             showInfo("Install files missing inside the app. Re-download the release.")
             return
         }
-        let sh = """
+        let vs = vsResourcePaths() // optional: power-limit engine; helper-only install proceeds without it
+        var sh = """
         set -e
         SUP='/Library/Application Support/TurboBoostSwitcher'
         BIN='/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper'
@@ -283,6 +301,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         launchctl bootout system "$PL" 2>/dev/null || true
         launchctl bootstrap system "$PL"
         """
+        if let v = vs {
+            sh += """
+            \ncp -f '\(v.0)' "$SUP/voltageshift"
+            chown root:wheel "$SUP/voltageshift"; chmod 755 "$SUP/voltageshift"
+            rm -rf '/Library/Extensions/VoltageShift.kext'
+            cp -R '\(v.1)' '/Library/Extensions/VoltageShift.kext'
+            chown -R root:wheel '/Library/Extensions/VoltageShift.kext'
+            chmod -R 755 '/Library/Extensions/VoltageShift.kext'
+            /usr/bin/kextutil '/Library/Extensions/VoltageShift.kext' 2>/dev/null || true
+            """
+        }
         let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("tbpro-install.sh")
         do { try sh.write(toFile: tmp, atomically: true, encoding: .utf8) }
         catch { showInfo("Cannot write installer script."); return }
@@ -339,6 +368,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.helperMissing()
             }
         }
+    }
+
+    @objc func showSettings() {
+        if settingsWC == nil { settingsWC = SettingsWC(app: self) }
+        settingsWC?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWC?.window?.makeKeyAndOrderFront(nil)
     }
 
     @objc func toggle() {

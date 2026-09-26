@@ -13,10 +13,27 @@ static NSString * const kKextBundleID = @"com.rugarciap.DisableTurboBoost";
 // both tools onto kmutil). Unload was always ID-based and always worked.
 static NSString * const kSupportDir = @"/Library/Application Support/TurboBoostSwitcher";
 static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSwitcher/wanted-state.plist";
+// VoltageShift integration (vendored GPL-3.0, see VShift/): the CLI lives in
+// our support dir, its kext in /Library/Extensions (needs the SIP kext
+// exemption + one approval — the Setup panel walks the user through it).
+static NSString * const kVSCLIPath = @"/Library/Application Support/TurboBoostSwitcher/voltageshift";
+static NSString * const kVSKextPath = @"/Library/Extensions/VoltageShift.kext";
+static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
 
 @implementation TurboBoostHelper
 
 #pragma mark - plist state
+
+- (NSMutableDictionary *)stateDict {
+    NSDictionary *d = [NSDictionary dictionaryWithContentsOfFile:kStatePath];
+    return d ? [d mutableCopy] : [NSMutableDictionary dictionary];
+}
+
+- (void)saveStateDict:(NSDictionary *)d {
+    [[NSFileManager defaultManager] createDirectoryAtPath:kSupportDir
+                              withIntermediateDirectories:YES attributes:nil error:nil];
+    [d writeToFile:kStatePath atomically:YES];
+}
 
 - (BOOL)persistedDisabled {
     NSDictionary *d = [NSDictionary dictionaryWithContentsOfFile:kStatePath];
@@ -25,9 +42,34 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
 }
 
 - (void)persistDisabled:(BOOL)disabled {
-    [[NSFileManager defaultManager] createDirectoryAtPath:kSupportDir
-                              withIntermediateDirectories:YES attributes:nil error:nil];
-    [@{@"disabled": @(disabled)} writeToFile:kStatePath atomically:YES];
+    NSMutableDictionary *d = [self stateDict];
+    d[@"disabled"] = @(disabled);
+    [self saveStateDict:d];
+}
+
+// PL state. Stock Apple defaults (100/125 on this chassis) = do-no-harm
+// default. First run with no keys adopts whatever is live (so an existing
+// manual `voltageshift power X Y` setup isn't clobbered), else stock.
+- (long)persistedPL1 { return [[self stateDict][@"pl1"] longValue] ?: 100; }
+- (long)persistedPL2 { return [[self stateDict][@"pl2"] longValue] ?: 125; }
+
+- (void)persistPL1:(long)pl1 PL2:(long)pl2 {
+    NSMutableDictionary *d = [self stateDict];
+    d[@"pl1"] = @(pl1); d[@"pl2"] = @(pl2);
+    [self saveStateDict:d];
+}
+
+- (void)ensurePLState {
+    NSMutableDictionary *d = [self stateDict];
+    if (d[@"pl1"] && d[@"pl2"]) return;
+    long live1 = 0, live2 = 0;
+    if ([self readLivePowerLimitsPL1:&live1 PL2:&live2]) {
+        d[@"pl1"] = @(live1); d[@"pl2"] = @(live2);
+        NSLog(@"[TBHelper] adopted live PL1=%ld PL2=%ld", live1, live2);
+    } else {
+        d[@"pl1"] = @100; d[@"pl2"] = @125;
+    }
+    [self saveStateDict:d];
 }
 
 #pragma mark - task runner (already root, no Authorization Services needed)
@@ -90,6 +132,67 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
     return ok;
 }
 
+#pragma mark - VoltageShift power limits
+
+- (BOOL)isVSKextLoaded {
+    NSString *out = nil;
+    [self runTask:@"/usr/sbin/kextstat" args:@[] output:&out];
+    return out && [out rangeOfString:kVSKextBundleID].location != NSNotFound;
+}
+
+- (BOOL)ensureVSKext:(NSString **)msg {
+    if ([self isVSKextLoaded]) { if (msg) *msg = @"already loaded"; return YES; }
+    if (![[NSFileManager defaultManager] fileExistsAtPath:kVSKextPath]) {
+        if (msg) *msg = @"VoltageShift.kext not installed (see Setup)";
+        return NO;
+    }
+    NSString *out = nil;
+    [self runTask:@"/usr/sbin/chown" args:@[@"-R", @"root:wheel", kVSKextPath] output:nil];
+    int st = [self runTask:@"/usr/bin/kextutil" args:@[kVSKextPath] output:&out];
+    if (msg) *msg = out;
+    if (st != 0) NSLog(@"[TBHelper] VS kextutil failed (%d): %@", st, out);
+    return st == 0 && [self isVSKextLoaded];
+}
+
+// Parse "OC_Locked Turbo_Disabled PL1: 45W PL2: 60W" from `voltageshift info`.
+- (BOOL)readLivePowerLimitsPL1:(long *)pl1 PL2:(long *)pl2 {
+    if (![[NSFileManager defaultManager] isExecutableFileAtPath:kVSCLIPath]) return NO;
+    NSString *out = nil;
+    int st = [self runTask:kVSCLIPath args:@[@"info"] output:&out];
+    if (st != 0 || !out) return NO;
+    NSScanner *s = [NSScanner scannerWithString:out];
+    long v1 = 0, v2 = 0;
+    if (![s scanUpToString:@"PL1:" intoString:NULL]) return NO;
+    [s scanString:@"PL1:" intoString:NULL];
+    long long t1 = 0;
+    if (![s scanLongLong:&t1] || t1 <= 0) return NO;
+    if (![s scanUpToString:@"PL2:" intoString:NULL]) return NO;
+    [s scanString:@"PL2:" intoString:NULL];
+    long long t2 = 0;
+    if (![s scanLongLong:&t2] || t2 <= 0) return NO;
+    v1 = (long)t1; v2 = (long)t2;
+    if (pl1) *pl1 = v1;
+    if (pl2) *pl2 = v2;
+    return YES;
+}
+
+- (BOOL)applyPowerLimitsPL1:(long)pl1 PL2:(long)pl2 msg:(NSString **)msg {
+    if (pl1 < 10) pl1 = 10; if (pl1 > 125) pl1 = 125;
+    if (pl2 < 15) pl2 = 15; if (pl2 > 200) pl2 = 200;
+    NSString *m = nil;
+    if (![self ensureVSKext:&m]) {
+        if (msg) *msg = [@"VS kext unavailable: " stringByAppendingString:m ?: @"-"];
+        return NO;
+    }
+    NSString *out = nil;
+    NSString *s1 = [NSString stringWithFormat:@"%ld", pl1];
+    NSString *s2 = [NSString stringWithFormat:@"%ld", pl2];
+    int st = [self runTask:kVSCLIPath args:@[@"power", s1, s2] output:&out];
+    if (msg) *msg = out;
+    if (st != 0) NSLog(@"[TBHelper] voltageshift power failed (%d): %@", st, out);
+    return st == 0;
+}
+
 #pragma mark - XPC protocol
 
 - (void)setTurboBoostDisabled:(BOOL)disabled
@@ -106,15 +209,29 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
 }
 
 - (void)reapplyDesiredStateWithReply:(void (^)(BOOL, NSString * _Nullable))reply {
-    if (![self persistedDisabled]) { reply(YES, @"desired=enabled, nothing to do"); return; }
     NSString *msg = nil;
-    BOOL ok = [self cycleKext:&msg];
-    NSLog(@"[TBHelper] reapply (wanted OFF) -> %d (%@)", ok, msg);
-    reply(ok, msg);
+    [self reapplyAll:&msg];
+    NSLog(@"[TBHelper] reapply -> %@", msg);
+    reply(YES, msg);
 }
 
 - (void)getVersionWithReply:(void (^)(NSString * _Nonnull))reply {
     reply(TBHelperVersion);
+}
+
+- (void)setPowerLimitsPL1:(long)pl1 PL2:(long)pl2
+                withReply:(void (^)(BOOL, NSString * _Nullable))reply {
+    [self ensurePLState];
+    NSString *msg = nil;
+    BOOL ok = [self applyPowerLimitsPL1:pl1 PL2:pl2 msg:&msg];
+    if (ok) [self persistPL1:pl1 PL2:pl2];
+    NSLog(@"[TBHelper] setPL %ld/%ld -> %d (%@)", pl1, pl2, ok, msg);
+    reply(ok, msg);
+}
+
+- (void)getPowerLimitsWithReply:(void (^)(long, long))reply {
+    [self ensurePLState];
+    reply([self persistedPL1], [self persistedPL2]);
 }
 
 - (void)getStatsWithReply:(void (^)(NSDictionary * _Nonnull))reply {
@@ -189,29 +306,45 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
             @"freqMaxMHz": @(maxMHz),
             @"freqAvgMHz": @(nCPU ? (long)(sumMHz / nCPU) : -1),
             @"tempC": @(tempC),
-            @"pkgW": @(pkgW)});
+            @"pkgW": @(pkgW),
+            @"pl1": @([self persistedPL1]),
+            @"pl2": @([self persistedPL2]),
+            @"vsKext": @([self isVSKextLoaded])});
 }
 
 #pragma mark - boot + wake
 
+- (void)reapplyAll:(NSString **)msg {
+    // Turbo MSR + package power limits are both volatile: re-assert together.
+    NSString *m1 = nil, *m2 = nil;
+    BOOL okT = YES;
+    if ([self persistedDisabled]) okT = [self cycleKext:&m1];
+    [self ensurePLState];
+    BOOL okP = [self applyPowerLimitsPL1:[self persistedPL1] PL2:[self persistedPL2] msg:&m2];
+    if (msg) *msg = [NSString stringWithFormat:@"turbo: %@ | pl: %@",
+                     okT ? (m1 ?: @"ok") : @"SKIPPED-enabled", m2 ?: @"-"];
+    if (!okT || !okP) NSLog(@"[TBHelper] reapply partial turbo=%d pl=%d", okT, okP);
+}
+
 - (void)restoreStateAtBoot {
-    if (![self persistedDisabled]) {
-        NSLog(@"[TBHelper] boot: desired=enabled, nothing to do");
-        return;
-    }
     NSString *msg = nil;
-    BOOL ok = [self loadKext:&msg];
-    NSLog(@"[TBHelper] boot restore (wanted OFF) -> %d (%@)", ok, msg);
+    if ([self persistedDisabled]) {
+        [self loadKext:&msg];
+    }
+    [self ensurePLState];
+    NSString *m2 = nil;
+    [self applyPowerLimitsPL1:[self persistedPL1] PL2:[self persistedPL2] msg:&m2];
+    NSLog(@"[TBHelper] boot restore turbo=%d pl=%ld/%ld (%@)",
+          [self persistedDisabled], [self persistedPL1], [self persistedPL2], m2);
 }
 
 - (void)handleSystemWake {
-    if (![self persistedDisabled]) return;
-    // MSR may not be writable the instant we wake; 1s delay like the app's 0.5/1.5s retries.
+    // MSRs may not be writable the instant we wake; 1s delay as before.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
                    dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
         NSString *msg = nil;
-        BOOL ok = [self cycleKext:&msg];
-        NSLog(@"[TBHelper] wake reapply -> %d (%@)", ok, msg);
+        [self reapplyAll:&msg];
+        NSLog(@"[TBHelper] wake reapply -> %@", msg);
     });
 }
 

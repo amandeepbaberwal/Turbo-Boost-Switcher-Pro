@@ -21,15 +21,22 @@ if [ ! -x "$CLONE_DIR/build/tbhelper" ]; then
   exit 1
 fi
 
-echo "[1/5] state dir (no kext file needed: loads by bundle ID from AuxKC)"
+echo "[1/5] state dir + VoltageShift engine (preserve existing choices)"
 mkdir -p "$SUPPORT_DIR"
 rm -rf "$SUPPORT_DIR/DisableTurboBoost.64bits.kext"  # remove unloadable copy from earlier revision
-if [ "$MODE" = "--disable" ]; then
-  printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><true/></dict></plist>' > "$SUPPORT_DIR/wanted-state.plist"
-else
-  printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><false/></dict></plist>' > "$SUPPORT_DIR/wanted-state.plist"
+if [ ! -f "$SUPPORT_DIR/wanted-state.plist" ]; then
+  if [ "$MODE" = "--disable" ]; then
+    printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><true/></dict></plist>' > "$SUPPORT_DIR/wanted-state.plist"
+  else
+    printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict><key>disabled</key><false/></dict></plist>' > "$SUPPORT_DIR/wanted-state.plist"
+  fi
 fi
-chown root:wheel "$SUPPORT_DIR/wanted-state.plist"; chmod 644 "$SUPPORT_DIR/wanted-state.plist"
+chown root:wheel "$SUPPORT_DIR" "$SUPPORT_DIR/wanted-state.plist"; chmod 755 "$SUPPORT_DIR"; chmod 644 "$SUPPORT_DIR/wanted-state.plist"
+cp -f "$CLONE_DIR/VShift/prebuilt/voltageshift" "$SUPPORT_DIR/voltageshift"
+chown root:wheel "$SUPPORT_DIR/voltageshift"; chmod 755 "$SUPPORT_DIR/voltageshift"
+rm -rf /Library/Extensions/VoltageShift.kext
+cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" /Library/Extensions/
+chown -R root:wheel /Library/Extensions/VoltageShift.kext; chmod -R 755 /Library/Extensions/VoltageShift.kext
 
 echo "[2/5] installing helper binary"
 mkdir -p /Library/PrivilegedHelperTools
