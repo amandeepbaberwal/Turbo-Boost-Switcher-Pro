@@ -14,6 +14,9 @@ class SettingsWC: NSWindowController {
     var sipLbl: NSTextField!
     var kextLbl: NSTextField!
     var helperLbl: NSTextField!
+    var bootLbl: NSTextField!
+    var reinstallBtn: NSButton!
+    var uninstallBtn: NSButton!
     var refreshSlider: NSSlider!
     var refreshVal: NSTextField!
     var curPL1 = 100
@@ -21,7 +24,7 @@ class SettingsWC: NSWindowController {
     var vsOK = false
 
     convenience init(app: AppDelegate) {
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 560),
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 660),
                            styleMask: [.titled, .closable], backing: .buffered, defer: false)
         win.title = "TurboMenu Settings"
         win.center()
@@ -37,76 +40,107 @@ class SettingsWC: NSWindowController {
         return l
     }
 
+    func sectionBox(_ title: String) -> (NSBox, NSStackView) {
+        let box = NSBox()
+        box.title = title
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 6
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        box.addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: box.topAnchor, constant: 24),
+            inner.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 12),
+            inner.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -12),
+            inner.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -10),
+        ])
+        return (box, inner)
+    }
+
+    func hrow(_ views: NSView...) -> NSStackView {
+        let r = NSStackView(views: views)
+        r.orientation = .horizontal
+        r.spacing = 8
+        return r
+    }
+
     func build() {
         guard let content = window?.contentView else { return }
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(stack)
+        let outer = NSStackView()
+        outer.orientation = .vertical
+        outer.alignment = .leading
+        outer.spacing = 10
+        outer.edgeInsets = NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
+        outer.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(outer)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: content.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            outer.topAnchor.constraint(equalTo: content.topAnchor),
+            outer.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            outer.trailingAnchor.constraint(equalTo: content.trailingAnchor),
         ])
 
-        stack.addView(label("System status:", bold: true), in: .leading)
+        // Box 1 — status + setup
+        let (box1, s1) = sectionBox("System status")
         sipLbl = label("SIP kext allowance: …")
         kextLbl = label("VoltageShift kext: …")
         helperLbl = label("Helper daemon: …")
-        stack.addView(sipLbl, in: .leading)
-        stack.addView(kextLbl, in: .leading)
-        stack.addView(helperLbl, in: .leading)
+        bootLbl = label("Last boot restore: …")
+        s1.addView(sipLbl, in: .leading)
+        s1.addView(kextLbl, in: .leading)
+        s1.addView(helperLbl, in: .leading)
+        s1.addView(bootLbl, in: .leading)
 
-        let how = NSTextView(frame: NSRect(x: 0, y: 0, width: 430, height: 150))
+        let how = NSTextView(frame: NSRect(x: 0, y: 0, width: 440, height: 118))
         how.string = """
         If rows above are red — one-time setup (Intel Macs only):
 
         1. Restart, hold Cmd+R → Utilities → Terminal, type:
            csrutil enable --without kext
            then Apple menu → Restart.
-        2. Launch TurboMenu → Install System Helper… (Apple
-           password dialog, once). The installer also stages the
-           VoltageShift kext.
+        2. Below → Reinstall Helper (Apple password dialog, once).
         3. If macOS reports blocked software: System Settings →
            Privacy & Security → Allow → Restart once more.
-        4. Back here → Recheck. Undo anytime: Recovery →
-           csrutil enable → Restart.
+        4. Recheck. Undo anytime: Recovery → csrutil enable.
         """
         how.isEditable = false
         how.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         how.backgroundColor = NSColor.textBackgroundColor
-        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 438, height: 150))
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 448, height: 118))
         scroll.documentView = how
         scroll.hasVerticalScroller = true
-        stack.addView(scroll, in: .leading)
+        s1.addView(scroll, in: .leading)
 
-        stack.addView(label("Power limits (watts):", bold: true), in: .leading)
-        pl1Slider = sliderRow(stack: stack, name: "PL1 sustained", min: 5, max: 100, valLbl: &pl1Val)
-        pl2Slider = sliderRow(stack: stack, name: "PL2 burst", min: 10, max: 150, valLbl: &pl2Val)
-        appliedLbl = label("Applied: …")
-        stack.addView(appliedLbl, in: .leading)
-
-        let row = NSStackView()
-        row.orientation = .horizontal
-        row.spacing = 8
-        applyBtn = NSButton(title: "Apply", target: self, action: #selector(applyPL))
-        row.addView(applyBtn, in: .leading)
-        let stock = NSButton(title: "Restore Stock Limits", target: self, action: #selector(restoreStock))
-        row.addView(stock, in: .leading)
+        reinstallBtn = NSButton(title: "Reinstall Helper…", target: self, action: #selector(reinstallTapped))
+        uninstallBtn = NSButton(title: "Uninstall…", target: self, action: #selector(uninstallTapped))
         let recheck = NSButton(title: "Recheck", target: self, action: #selector(refreshAll))
-        row.addView(recheck, in: .leading)
-        stack.addView(row, in: .leading)
-        stack.addView(label("Lower = cooler + quieter, slower sustained. Bursts stay snappy.", bold: false), in: .leading)
-        stack.addView(label("Menu bar live stats refresh:", bold: true), in: .leading)
-        refreshSlider = sliderRow(stack: stack, name: "Interval", min: 1, max: 60, valLbl: &refreshVal)
+        s1.addView(hrow(reinstallBtn, uninstallBtn, recheck), in: .leading)
+        outer.addView(box1, in: .leading)
+
+        // Box 2 — power limits
+        let (box2, s2) = sectionBox("Power limits (watts)")
+        pl1Slider = sliderRow(stack: s2, name: "PL1 sustained", min: 5, max: 100, valLbl: &pl1Val)
+        pl2Slider = sliderRow(stack: s2, name: "PL2 burst", min: 10, max: 150, valLbl: &pl2Val)
+        appliedLbl = label("Applied: …")
+        s2.addView(appliedLbl, in: .leading)
+        applyBtn = NSButton(title: "Apply", target: self, action: #selector(applyPL))
+        let stock = NSButton(title: "Restore Stock Limits", target: self, action: #selector(restoreStock))
+        s2.addView(hrow(applyBtn, stock), in: .leading)
+        s2.addView(label("Lower = cooler + quieter, slower sustained. Bursts stay snappy.", bold: false), in: .leading)
+        outer.addView(box2, in: .leading)
+
+        // Box 3 — menu bar refresh
+        let (box3, s3) = sectionBox("Menu bar live stats")
+        refreshSlider = sliderRow(stack: s3, name: "Interval", min: 1, max: 60, valLbl: &refreshVal)
         refreshSlider.target = self
         refreshSlider.action = #selector(refreshMoved)
         refreshSlider.isContinuous = false
-        stack.addView(label("1s = constant sampling (costs CPU); 5s default. Off unless the bar-stats checkbox is ticked.", bold: false), in: .leading)
+        s3.addView(label("1s = constant sampling (costs CPU); 5s default. Off unless the bar-stats checkbox is ticked.", bold: false), in: .leading)
+        outer.addView(box3, in: .leading)
     }
+
+    @objc func reinstallTapped() { app?.runAdminInstall() }
+    @objc func uninstallTapped() { app?.uninstallHelper() }
 
     func sliderRow(stack: NSStackView, name: String, min: Double, max: Double, valLbl: inout NSTextField!) -> NSSlider {
         let row = NSStackView()
@@ -145,6 +179,8 @@ class SettingsWC: NSWindowController {
         if let app = app {
             refreshSlider.doubleValue = app.pollInterval
             refreshVal.stringValue = "\(Int(app.pollInterval))s"
+            reinstallBtn.isEnabled = true
+            uninstallBtn.isEnabled = app.helperInstalled
         }
         // 1. SIP kext exemption (unprivileged read)
         let p = Process()
@@ -173,6 +209,9 @@ class SettingsWC: NSWindowController {
                 self.vsOK = vs
                 self.setDot(self.kextLbl, ok: vs, text: vs ? "VoltageShift kext loaded" : "kext not loaded (install + reboot)")
                 self.setDot(self.helperLbl, ok: true, text: "helper daemon reachable")
+                if let br = s["bootRestore"] as? String {
+                    self.bootLbl.stringValue = "Last boot restore: \(br)"
+                }
                 if let a = s["pl1"] as? Int, let b = s["pl2"] as? Int {
                     self.curPL1 = a; self.curPL2 = b
                     self.pl1Slider.doubleValue = Double(a)

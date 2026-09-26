@@ -20,6 +20,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var menu: NSMenu!
     var toggleItem: NSMenuItem!
     var showStatsItem: NSMenuItem!
+    var pl1Item: NSMenuItem!
+    var pl2Item: NSMenuItem!
     var stateItem: NSMenuItem!
     var pollTimer: Timer?
     // Default: bar shows only TB ON/OFF; stats live in the dropdown and
@@ -29,11 +31,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let v = UserDefaults.standard.object(forKey: "pollInterval") as? Double ?? 5.0
         return min(max(v, 1.0), 60.0)
     }()
-    var installItem: NSMenuItem!
-    var uninstallItem: NSMenuItem!
     var settingsWC: SettingsWC?
     var helperInstalled = false
     var didPromptInstall = false
+    var curPL1 = -1
+    var curPL2 = -1
     var freqItem: NSMenuItem!
     var tempItem: NSMenuItem!
     var powerItem: NSMenuItem!
@@ -71,10 +73,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tempItem.isEnabled = false
         powerItem = NSMenuItem(title: "Power: …", action: nil, keyEquivalent: "")
         powerItem.isEnabled = false
+        pl1Item = NSMenuItem(title: "PL1: …", action: nil, keyEquivalent: "")
+        pl1Item.isEnabled = false
+        pl2Item = NSMenuItem(title: "PL2: …", action: nil, keyEquivalent: "")
+        pl2Item.isEnabled = false
         menu.addItem(stateItem)
         menu.addItem(freqItem)
         menu.addItem(tempItem)
         menu.addItem(powerItem)
+        menu.addItem(pl1Item)
+        menu.addItem(pl2Item)
         menu.addItem(NSMenuItem.separator())
         toggleItem = NSMenuItem(title: "Toggle Turbo Boost", action: #selector(toggle), keyEquivalent: "")
         toggleItem.target = self
@@ -85,12 +93,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showStatsItem.state = showStatsInBar ? .on : .off
         menu.addItem(showStatsItem)
         menu.addItem(NSMenuItem.separator())
-        installItem = NSMenuItem(title: "Install System Helper…", action: #selector(runAdminInstall), keyEquivalent: "")
-        installItem.target = self
-        menu.addItem(installItem)
-        uninstallItem = NSMenuItem(title: "Uninstall Helper…", action: #selector(uninstallHelper), keyEquivalent: "")
-        uninstallItem.target = self
-        menu.addItem(uninstallItem)
         let settingsItem = NSMenuItem(title: "Power & Setup…", action: #selector(showSettings), keyEquivalent: "")
         settingsItem.target = self
         menu.addItem(settingsItem)
@@ -123,13 +125,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if showStatsInBar { refresh() }
     }
 
-    // Menu delegate: fetch fresh stats only when the user opens the menu.
-    // No background polling — powermetrics never runs unless you're looking.
+    // Menu delegate: show cached values instantly, then fetch fresh stats.
+    // No blanking: the previous reading stays visible during the ~1s sample.
     func menuWillOpen(_ menu: NSMenu) {
-        stateItem.title = "State: …"
-        freqItem.title = "Freq: …"
-        tempItem.title = "Temp: …"
-        powerItem.title = "Power: …"
         refresh()
     }
 
@@ -174,6 +172,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let w = s["pkgW"] as? Double { self.pkgW = w }
                 if let v = s["vsKext"] as? Bool { self.vsKext = v }
                 if let c = s["vsCLI"] as? Bool { self.vsCLI = c }
+                if let a = s["pl1"] as? Int { self.curPL1 = a }
+                if let b = s["pl2"] as? Int { self.curPL2 = b }
                 self.known = true
                 self.render()
             }
@@ -212,6 +212,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             powerItem.title = pkgW >= 0 ? String(format: "Package power: %.1f W", pkgW) : "Package power: sampling…"
         }
+        if curPL1 > 0 && curPL2 > 0 {
+            pl1Item.title = "PL1 limit: \(curPL1) W"
+            pl2Item.title = "PL2 limit: \(curPL2) W"
+        } else {
+            pl1Item.title = "PL1 limit: …"
+            pl2Item.title = "PL2 limit: …"
+        }
         toggleItem.title = disabled ? "Enable Turbo Boost" : "Disable Turbo Boost"
     }
 
@@ -238,9 +245,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 c.invalidate()
                 DispatchQueue.main.async {
                     self.helperInstalled = true
-                    self.installItem.title = "Reinstall System Helper…"
                     self.toggleItem.isEnabled = true
-                    self.uninstallItem.isEnabled = true
                     self.queryStateOnly()
                     self.updateTimer()
                 }
@@ -258,9 +263,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         freqItem.title = "Freq: —"
         tempItem.title = "Temp: —"
         powerItem.title = "Power: —"
+        pl1Item.title = "PL1: —"
+        pl2Item.title = "PL2: —"
         toggleItem.isEnabled = false
-        installItem.title = "Install System Helper…"
-        uninstallItem.isEnabled = false
         settingsWC?.refreshAll() // update open Settings window to missing-state too
         if !didPromptInstall {
             didPromptInstall = true

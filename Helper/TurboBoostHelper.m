@@ -20,7 +20,16 @@ static NSString * const kVSCLIPath = @"/Library/Application Support/TurboBoostSw
 static NSString * const kVSKextPath = @"/Library/Extensions/VoltageShift.kext";
 static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
 
-@implementation TurboBoostHelper
+@implementation TurboBoostHelper {
+    NSString *_lastBootRestore; // visible in Settings; explains slow-boot races
+}
+
+- (NSString *)clockNow {
+    static NSDateFormatter *f = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ f = [[NSDateFormatter alloc] init]; f.dateFormat = @"HH:mm:ss"; });
+    return [f stringFromDate:[NSDate date]];
+}
 
 #pragma mark - plist state
 
@@ -351,7 +360,8 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
             @"pl2": @([self persistedPL2]),
             @"vsKext": @([self isVSKextLoaded]),
             @"vsCLI": @(vsCLI),
-            @"sip": sip});
+            @"sip": sip,
+            @"bootRestore": _lastBootRestore ?: @"not run yet"});
 }
 
 #pragma mark - boot + wake
@@ -369,15 +379,42 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
 }
 
 - (void)restoreStateAtBoot {
-    NSString *msg = nil;
-    if ([self persistedDisabled]) {
-        [self loadKext:&msg];
-    }
+    _lastBootRestore = @"running…";
+    [self attemptBootRestore:1];
+}
+
+// Verified restore: slow boots (kext staging, MSR readiness) used to leave
+// PL/turbo unapplied with no trace. Now each attempt verifies live state
+// and retries at +10s/+30s before giving up with a visible status.
+- (void)attemptBootRestore:(int)tryNo {
     [self ensurePLState];
+    if ([self persistedDisabled]) {
+        NSString *m = nil;
+        [self loadKext:&m];
+    }
     NSString *m2 = nil;
     [self applyPowerLimitsPL1:[self persistedPL1] PL2:[self persistedPL2] msg:&m2];
-    NSLog(@"[TBHelper] boot restore turbo=%d pl=%ld/%ld (%@)",
-          [self persistedDisabled], [self persistedPL1], [self persistedPL2], m2);
+    BOOL turboOK = ![self persistedDisabled] || [self isKextLoaded];
+    long r1 = 0, r2 = 0;
+    BOOL plOK = [self readLivePowerLimitsPL1:&r1 PL2:&r2];
+    if (turboOK && plOK) {
+        _lastBootRestore = [NSString stringWithFormat:@"ok %@ (turbo %@, PL %ld/%ld)",
+                            [self clockNow],
+                            [self persistedDisabled] ? @"OFF" : @"ON",
+                            [self persistedPL1], [self persistedPL2]];
+        NSLog(@"[TBHelper] boot restore verified: %@", _lastBootRestore);
+    } else if (tryNo < 3) {
+        _lastBootRestore = [NSString stringWithFormat:@"verifying… (try %d)", tryNo];
+        int delay = tryNo == 1 ? 10 : 30;
+        NSLog(@"[TBHelper] boot restore incomplete (turbo=%d pl=%d), retry in %ds", turboOK, plOK, delay);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                       dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+            [self attemptBootRestore:tryNo + 1];
+        });
+    } else {
+        _lastBootRestore = @"partial — see /var/log/tbhelper.log";
+        NSLog(@"[TBHelper] boot restore partial after 3 tries (turbo=%d pl=%d)", turboOK, plOK);
+    }
 }
 
 - (void)handleSystemWake {
