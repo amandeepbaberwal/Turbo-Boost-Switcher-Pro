@@ -254,13 +254,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pollTimer?.invalidate()
         pollTimer = nil
         statusItem.button?.title = "TB ?"
-        stateItem.title = "Helper not installed"
+        stateItem.title = "Helper not installed — turbo + power need it"
         freqItem.title = "Freq: —"
         tempItem.title = "Temp: —"
         powerItem.title = "Power: —"
         toggleItem.isEnabled = false
         installItem.title = "Install System Helper…"
         uninstallItem.isEnabled = false
+        settingsWC?.refreshAll() // update open Settings window to missing-state too
         if !didPromptInstall {
             didPromptInstall = true
             let a = NSAlert()

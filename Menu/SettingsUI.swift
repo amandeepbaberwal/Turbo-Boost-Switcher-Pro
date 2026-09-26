@@ -184,6 +184,10 @@ class SettingsWC: NSWindowController {
 
     @objc func applyPL() {
         guard let app = app else { return }
+        guard app.helperInstalled else {
+            appliedLbl.stringValue = "Helper not installed — nothing can apply without it."
+            return
+        }
         guard vsOK else {
             appliedLbl.stringValue = "Kext not loaded — do the Setup steps above, then Recheck."
             return
