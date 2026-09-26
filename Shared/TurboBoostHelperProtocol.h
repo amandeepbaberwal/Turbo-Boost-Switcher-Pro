@@ -27,7 +27,9 @@ static NSString * const TBHelperVersion = @"1.0";
 //           @"pkgW": @(double package power in watts, -1 unknown),
 //           @"pl1": @(long persisted PL1 watts),
 //           @"pl2": @(long persisted PL2 watts),
-//           @"vsKext": @(BOOL VoltageShift kext loaded)}
+//           @"vsKext": @(BOOL VoltageShift kext loaded),
+//           @"vsCLI": @(BOOL voltageshift CLI present),
+//           @"sip": @"exempt"/@"full"/@"unknown" (kext-signing enforcement)}
 - (void)getStatsWithReply:(void (^)(NSDictionary * _Nonnull stats))reply;
 
 // Package power limits (watts). Persists + applies at boot/wake via the

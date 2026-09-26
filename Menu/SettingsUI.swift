@@ -18,6 +18,7 @@ class SettingsWC: NSWindowController {
     var refreshVal: NSTextField!
     var curPL1 = 100
     var curPL2 = 125
+    var vsOK = false
 
     convenience init(app: AppDelegate) {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 560),
@@ -156,12 +157,18 @@ class SettingsWC: NSWindowController {
         setDot(sipLbl, ok: exempt, text: exempt ? "kext loading allowed" : "full SIP — kext will not load (see steps)")
 
         // 2+3. helper + kext + current PL via one stats call
-        guard let app = app else { return }
+        guard let app = app, app.helperInstalled else {
+            setDot(kextLbl, ok: false, text: "helper missing — install it first")
+            setDot(helperLbl, ok: false, text: "helper missing — install it first")
+            vsOK = false
+            return
+        }
         let c = app.connect()
         app.proxy(c).getStatsWithReply { s in
             c.invalidate()
             DispatchQueue.main.async {
                 let vs = (s["vsKext"] as? Bool) ?? false
+                self.vsOK = vs
                 self.setDot(self.kextLbl, ok: vs, text: vs ? "VoltageShift kext loaded" : "kext not loaded (install + reboot)")
                 self.setDot(self.helperLbl, ok: true, text: "helper daemon reachable")
                 if let a = s["pl1"] as? Int, let b = s["pl2"] as? Int {
@@ -177,6 +184,10 @@ class SettingsWC: NSWindowController {
 
     @objc func applyPL() {
         guard let app = app else { return }
+        guard vsOK else {
+            appliedLbl.stringValue = "Kext not loaded — do the Setup steps above, then Recheck."
+            return
+        }
         let a = Int(pl1Slider.doubleValue), b = Int(pl2Slider.doubleValue)
         applyBtn.isEnabled = false
         appliedLbl.stringValue = "Applying…"

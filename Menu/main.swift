@@ -42,6 +42,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var freqAvg = -1
     var tempC = -1.0
     var pkgW = -1.0
+    var vsKext = false
+    var vsCLI = false
     var known = false
     let nominalMHz = AppDelegate.nominalClockMHz()
 
@@ -170,6 +172,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let a = s["freqAvgMHz"] as? Int { self.freqAvg = a }
                 if let t = s["tempC"] as? Double { self.tempC = t }
                 if let w = s["pkgW"] as? Double { self.pkgW = w }
+                if let v = s["vsKext"] as? Bool { self.vsKext = v }
+                if let c = s["vsCLI"] as? Bool { self.vsCLI = c }
                 self.known = true
                 self.render()
             }
@@ -198,10 +202,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 (freqAvg > 0 ? "  avg \(ghz(freqAvg))" : "") +
                 "  (base \(ghz(nominalMHz)))"
         } else {
-            freqItem.title = "Freq: unreadable (see log)"
+            freqItem.title = "Freq: unavailable on this macOS"
         }
-        tempItem.title = tempC >= 0 ? String(format: "CPU temp: %.1f °C", tempC) : "CPU temp: n/a"
-        powerItem.title = pkgW >= 0 ? String(format: "Package power: %.1f W", pkgW) : "Package power: n/a"
+        tempItem.title = tempC >= 0 ? String(format: "CPU temp: %.1f °C", tempC) : "CPU temp: unavailable"
+        if !vsCLI {
+            powerItem.title = "Power: engine missing — reinstall app"
+        } else if !vsKext {
+            powerItem.title = "Power: kext not loaded — open Power & Setup"
+        } else {
+            powerItem.title = pkgW >= 0 ? String(format: "Package power: %.1f W", pkgW) : "Package power: sampling…"
+        }
         toggleItem.title = disabled ? "Enable Turbo Boost" : "Disable Turbo Boost"
     }
 
@@ -400,6 +410,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.proxy(c2).setTurboBoostDisabled(!fresh) { ok, msg in
                 NSLog("[TBMenu] toggle -> %d %@", ok, msg ?? "-")
                 c2.invalidate()
+                DispatchQueue.main.async {
+                    if !ok { self.showInfo("Toggle failed.\n\n\(msg ?? "unknown error")") }
+                }
                 self.queryStateOnly()
             }
         }

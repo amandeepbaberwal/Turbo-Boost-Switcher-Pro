@@ -75,18 +75,38 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
 #pragma mark - task runner (already root, no Authorization Services needed)
 
 - (int)runTask:(NSString *)launchPath args:(NSArray<NSString *> *)args output:(NSString **)out {
+    return [self runTask:launchPath args:args output:out timeout:0];
+}
+
+// timeout<=0 waits forever (kext ops). Positive timeout kills the task and
+// returns -2, so one stuck tool (e.g. powermetrics) can never wedge XPC:
+// the menu opens a fresh connection per call, but a wedged exported object
+// would still serialize-block that connection's queue.
+- (int)runTask:(NSString *)launchPath args:(NSArray<NSString *> *)args output:(NSString **)out timeout:(NSTimeInterval)timeout {
     NSPipe *pipe = [NSPipe pipe];
     NSTask *t = [[NSTask alloc] init];
     t.launchPath = launchPath;
     t.arguments = args;
     t.standardOutput = pipe;
     t.standardError = pipe;
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+    t.terminationHandler = ^(NSTask *task __unused) { dispatch_semaphore_signal(sem); };
     @try { [t launch]; } @catch (NSException *e) {
         NSLog(@"[TBHelper] launch %@ failed: %@", launchPath, e);
         if (out) *out = e.reason ?: @"launch failed";
         return -1;
     }
-    [t waitUntilExit];
+    if (timeout > 0) {
+        if (dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(timeout * NSEC_PER_SEC))) != 0) {
+            @try { [t terminate]; } @catch (NSException *e __unused) {}
+            [t waitUntilExit];
+            if (out) *out = @"timed out";
+            NSLog(@"[TBHelper] %@ timed out after %.0fs", launchPath, timeout);
+            return -2;
+        }
+    } else {
+        [t waitUntilExit];
+    }
     if (out) {
         NSData *d = [[pipe fileHandleForReading] readDataToEndOfFile];
         *out = [[NSString alloc] initWithData:d encoding:NSUTF8StringEncoding] ?: @"";
@@ -254,7 +274,7 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
     int st = [self runTask:@"/usr/bin/powermetrics"
                       args:@[@"-n", @"1", @"-i", @"200",
                              @"--samplers", @"cpu_power,smc"]
-                    output:&out];
+                    output:&out timeout:8];
     long maxMHz = -1, sumMHz = 0, nCPU = 0;
     double tempC = -1, pkgW = -1;
     if (st == 0 && out) {
@@ -313,6 +333,15 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
     } else {
         NSLog(@"[TBHelper] powermetrics failed (%d)", st);
     }
+    // Health flags so the menu can explain itself instead of showing bare n/a.
+    BOOL vsCLI = [[NSFileManager defaultManager] isExecutableFileAtPath:kVSCLIPath];
+    NSString *sipOut = nil;
+    [self runTask:@"/usr/bin/csrutil" args:@[@"status"] output:&sipOut timeout:5];
+    NSString *sip = @"unknown";
+    if (sipOut) {
+        if ([sipOut rangeOfString:@"Kext Signing: disabled"].location != NSNotFound) sip = @"exempt";
+        else if ([sipOut rangeOfString:@"System Integrity Protection status: enabled."].location != NSNotFound) sip = @"full";
+    }
     reply(@{@"disabled": @(disabled),
             @"freqMaxMHz": @(maxMHz),
             @"freqAvgMHz": @(nCPU ? (long)(sumMHz / nCPU) : -1),
@@ -320,7 +349,9 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
             @"pkgW": @(pkgW),
             @"pl1": @([self persistedPL1]),
             @"pl2": @([self persistedPL2]),
-            @"vsKext": @([self isVSKextLoaded])});
+            @"vsKext": @([self isVSKextLoaded]),
+            @"vsCLI": @(vsCLI),
+            @"sip": sip});
 }
 
 #pragma mark - boot + wake
