@@ -136,7 +136,7 @@ class SettingsWC: NSWindowController {
         refreshSlider = sliderRow(stack: s3, name: "Interval", min: 1, max: 60, valLbl: &refreshVal)
         refreshSlider.target = self
         refreshSlider.action = #selector(refreshMoved)
-        refreshSlider.isContinuous = false
+        refreshSlider.isContinuous = true // live label while dragging (commit is cheap: timer restart only)
         s3.addView(label("1s = constant sampling (costs CPU); 5s default. Off unless the bar-stats checkbox is ticked.", bold: false), in: .leading)
         outer.addView(box3, in: .leading)
     }

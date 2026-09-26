@@ -121,8 +121,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func setPollInterval(_ v: Double) {
         pollInterval = min(max(v, 1.0), 60.0)
         UserDefaults.standard.set(pollInterval, forKey: "pollInterval")
-        updateTimer()
-        if showStatsInBar { refresh() }
+        updateTimer() // running poll picks up the new cadence; no forced sample
     }
 
     // Menu delegate: show cached values instantly, then fetch fresh stats.
