@@ -26,7 +26,7 @@ class SettingsWC: NSWindowController {
     convenience init(app: AppDelegate) {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 660),
                            styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        win.title = "TurboMenu Settings"
+        win.title = "Mac Turbo Disabler Settings"
         win.center()
         self.init(window: win)
         self.app = app

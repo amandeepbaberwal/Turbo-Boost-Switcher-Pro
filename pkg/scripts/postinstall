@@ -30,12 +30,16 @@ launchctl bootstrap system "$LAUNCH_PLIST" 2>/dev/null || true
 launchctl enable "system/com.local.TurboBoostSwitcher.helper" 2>/dev/null || true
 
 # 4. start the menu agent for the console user (double-click installs never touch Terminal)
+# Also retire the pre-rename TurboMenu agent/app if present.
 CONSOLE_USER=$(stat -f%Su /dev/console 2>/dev/null || echo "")
 if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
   CONSOLE_UID=$(id -u "$CONSOLE_USER" 2>/dev/null || echo "")
   if [ -n "$CONSOLE_UID" ]; then
+    launchctl bootout "gui/$CONSOLE_UID/com.local.TurboBoostMenu" 2>/dev/null || true
+    rm -f /Users/$CONSOLE_USER/Library/LaunchAgents/com.local.TurboBoostMenu.plist
+    rm -rf /Applications/TurboMenu.app
     launchctl bootstrap "gui/$CONSOLE_UID" "$AGENT_PLIST" 2>/dev/null || true
-    launchctl enable "gui/$CONSOLE_UID/com.local.TurboBoostMenu" 2>/dev/null || true
+    launchctl enable "gui/$CONSOLE_UID/com.local.MacTurboDisabler" 2>/dev/null || true
   fi
 fi
 

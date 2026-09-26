@@ -2,8 +2,11 @@
 # uninstall.sh — fully revert install.sh.
 set -euo pipefail
 echo "Removing menu agent..."
+launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.local.MacTurboDisabler.plist 2>/dev/null || true
 launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist 2>/dev/null || true
+rm -f ~/Library/LaunchAgents/com.local.MacTurboDisabler.plist
 rm -f ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist
+rm -rf /Applications/MacTurboDisabler.app
 rm -rf /Applications/TurboMenu.app
 echo "Removing privileged helper (sudo)..."
 sudo bash -c '

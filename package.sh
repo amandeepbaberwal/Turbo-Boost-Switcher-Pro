@@ -14,20 +14,20 @@ xcrun clang -O2 -fobjc-arc -Wno-nullability-completeness -I "$CLONE_DIR/Shared" 
   -o "$CLONE_DIR/build/tbhelper"
 
 echo "[2/4] rebuilding menu + .app"
-xcrun swiftc -O -framework Cocoa "$CLONE_DIR/Menu/"*.swift -o "$CLONE_DIR/build/TurboMenu"
+xcrun swiftc -O -framework Cocoa "$CLONE_DIR/Menu/"*.swift -o "$CLONE_DIR/build/MacTurboDisabler"
 rm -rf "$STAGE"
-mkdir -p "$STAGE/files" "$STAGE/TurboMenu.app/Contents/MacOS" "$STAGE/TurboMenu.app/Contents/Resources"
+mkdir -p "$STAGE/files" "$STAGE/MacTurboDisabler.app/Contents/MacOS" "$STAGE/MacTurboDisabler.app/Contents/Resources"
 cp "$CLONE_DIR/build/tbhelper" "$STAGE/files/"
 cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$STAGE/files/"
 cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$STAGE/files/MenuAgent.plist"
-cp "$CLONE_DIR/build/TurboMenu" "$STAGE/TurboMenu.app/Contents/MacOS/"
-cp "$CLONE_DIR/Menu/Info.plist" "$STAGE/TurboMenu.app/Contents/"
-cp "$CLONE_DIR/build/tbhelper" "$STAGE/TurboMenu.app/Contents/Resources/"
-cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$STAGE/TurboMenu.app/Contents/Resources/"
-cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$STAGE/TurboMenu.app/Contents/Resources/"
-rm -rf "$STAGE/TurboMenu.app/Contents/Resources/VoltageShift.kext"
-cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$STAGE/TurboMenu.app/Contents/Resources/"
-codesign -s - -f "$STAGE/TurboMenu.app" 2>/dev/null || true
+cp "$CLONE_DIR/build/MacTurboDisabler" "$STAGE/MacTurboDisabler.app/Contents/MacOS/"
+cp "$CLONE_DIR/Menu/Info.plist" "$STAGE/MacTurboDisabler.app/Contents/"
+cp "$CLONE_DIR/build/tbhelper" "$STAGE/MacTurboDisabler.app/Contents/Resources/"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$STAGE/MacTurboDisabler.app/Contents/Resources/"
+cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$STAGE/MacTurboDisabler.app/Contents/Resources/"
+rm -rf "$STAGE/MacTurboDisabler.app/Contents/Resources/VoltageShift.kext"
+cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$STAGE/MacTurboDisabler.app/Contents/Resources/"
+codesign -s - -f "$STAGE/MacTurboDisabler.app" 2>/dev/null || true
 cp "$CLONE_DIR/dist-src/install.sh" "$CLONE_DIR/dist-src/uninstall.sh" "$STAGE/"
 cp "$CLONE_DIR/README.md" "$CLONE_DIR/NOTICE" "$CLONE_DIR/LICENSE" "$STAGE/"
 chmod +x "$STAGE/install.sh" "$STAGE/uninstall.sh"
@@ -47,21 +47,21 @@ mkdir -p "$PKGROOT/Library/PrivilegedHelperTools" \
          "$PKGROOT/Library/LaunchAgents" \
          "$PKGROOT/Library/Extensions" \
          "$PKGROOT/Library/Application Support/TurboBoostSwitcher" \
-         "$PKGROOT/Applications/TurboMenu.app/Contents/MacOS" \
-         "$PKGROOT/Applications/TurboMenu.app/Contents/Resources"
+         "$PKGROOT/Applications/MacTurboDisabler.app/Contents/MacOS" \
+         "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources"
 cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
 cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist"
 cp "$CLONE_DIR/Menu/LaunchAgent.plist" "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
 cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$PKGROOT/Library/Application Support/TurboBoostSwitcher/voltageshift"
 cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$PKGROOT/Library/Extensions/VoltageShift.kext"
-cp "$CLONE_DIR/build/TurboMenu" "$PKGROOT/Applications/TurboMenu.app/Contents/MacOS/"
-cp "$CLONE_DIR/Menu/Info.plist" "$PKGROOT/Applications/TurboMenu.app/Contents/"
-cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/"
-cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/"
-cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/"
-rm -rf "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/VoltageShift.kext"
-cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$PKGROOT/Applications/TurboMenu.app/Contents/Resources/"
-codesign -s - -f "$PKGROOT/Applications/TurboMenu.app" 2>/dev/null || true
+cp "$CLONE_DIR/build/MacTurboDisabler" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/MacOS/"
+cp "$CLONE_DIR/Menu/Info.plist" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/"
+cp "$CLONE_DIR/build/tbhelper" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/"
+cp "$CLONE_DIR/Helper/LaunchDaemon.plist" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/"
+cp "$CLONE_DIR/VShift/prebuilt/voltageshift" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/"
+rm -rf "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/VoltageShift.kext"
+cp -R "$CLONE_DIR/VShift/prebuilt/VoltageShift.kext" "$PKGROOT/Applications/MacTurboDisabler.app/Contents/Resources/"
+codesign -s - -f "$PKGROOT/Applications/MacTurboDisabler.app" 2>/dev/null || true
 chmod 544 "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.helper"
 chmod 755 "$PKGROOT/Library/Application Support/TurboBoostSwitcher/voltageshift"
 chmod 644 "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist" \

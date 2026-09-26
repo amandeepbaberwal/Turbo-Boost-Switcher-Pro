@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.local.TurboBoostMenu</string>
+    <string>com.local.MacTurboDisabler</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Applications/TurboMenu.app/Contents/MacOS/TurboMenu</string>
+        <string>/Applications/MacTurboDisabler.app/Contents/MacOS/MacTurboDisabler</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

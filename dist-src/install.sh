@@ -49,18 +49,22 @@ else
   echo "turbo ON"
 fi
 
-echo "[3/4] installing TurboMenu + auto-start (no auth needed)"
-if [ -d "TurboMenu.app" ]; then
-  rm -rf /Applications/TurboMenu.app
-  cp -R TurboMenu.app /Applications/
+echo "[3/4] installing Mac Turbo Disabler + auto-start (no auth needed)"
+# Retire pre-rename TurboMenu install if present.
+launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist 2>/dev/null || true
+rm -f ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist
+rm -rf /Applications/TurboMenu.app
+if [ -d "MacTurboDisabler.app" ]; then
+  rm -rf /Applications/MacTurboDisabler.app
+  cp -R MacTurboDisabler.app /Applications/
   mkdir -p ~/Library/LaunchAgents
-  cp files/MenuAgent.plist ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist
-  launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist 2>/dev/null || true
-  launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.local.TurboBoostMenu.plist
-  launchctl enable "gui/$(id -u)/com.local.TurboBoostMenu" 2>/dev/null || true
+  cp files/MenuAgent.plist ~/Library/LaunchAgents/com.local.MacTurboDisabler.plist
+  launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.local.MacTurboDisabler.plist 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.local.MacTurboDisabler.plist
+  launchctl enable "gui/$(id -u)/com.local.MacTurboDisabler" 2>/dev/null || true
   echo "menu installed (look for TB ON/OFF top-right)"
 else
-  echo "TurboMenu.app not in package, skipping menu"
+  echo "MacTurboDisabler.app not in package, skipping menu"
 fi
 
 echo "[4/4] done. Sleep/wake your Mac to confirm: no password prompt, ever."

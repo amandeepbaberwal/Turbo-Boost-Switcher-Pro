@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>TurboMenu</string>
+    <string>MacTurboDisabler</string>
     <key>CFBundleIdentifier</key>
-    <string>com.local.TurboBoostMenu</string>
+    <string>com.local.MacTurboDisabler</string>
     <key>CFBundleName</key>
-    <string>TurboMenu</string>
+    <string>Mac Turbo Disabler</string>
     <key>CFBundleVersion</key>
     <string>2.0.0</string>
     <key>CFBundleShortVersionString</key>

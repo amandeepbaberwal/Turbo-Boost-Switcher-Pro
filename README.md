@@ -1,4 +1,4 @@
-# Turbo-Boost-Switcher-Pro (community clean-room build)
+# Mac Turbo Disabler (community clean-room build)
 
 Password-once Turbo Boost toggle for Intel Macs: a root helper daemon owns
 the kext across sleep/wake/reboot, and a menu-bar app shows state, live

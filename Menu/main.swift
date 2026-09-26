@@ -1,4 +1,4 @@
-// TurboMenu.swift — menu-bar client for the TB privileged helper.
+// main.swift — Mac Turbo Disabler menu-bar client for the TB privileged helper.
 // Shows state + current max CPU freq + temp, all fetched over XPC.
 // Never touches auth: powermetrics/kext work happens root-side in the helper.
 import Cocoa
@@ -271,7 +271,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             didPromptInstall = true
             let a = NSAlert()
             a.messageText = "Install system helper?"
-            a.informativeText = "TurboMenu needs a one-time helper install (Apple system password dialog). After that it never asks again."
+            a.informativeText = "Mac Turbo Disabler needs a one-time helper install (Apple system password dialog). After that it never asks again."
             a.addButton(withTitle: "Install")
             a.addButton(withTitle: "Later")
             NSApp.activate(ignoringOtherApps: true)
@@ -289,7 +289,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func showInfo(_ text: String) {
         let a = NSAlert()
-        a.messageText = "TurboMenu"
+        a.messageText = "Mac Turbo Disabler"
         a.informativeText = text
         a.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)
