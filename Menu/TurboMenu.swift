@@ -29,10 +29,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var didPromptInstall = false
     var freqItem: NSMenuItem!
     var tempItem: NSMenuItem!
+    var powerItem: NSMenuItem!
     var disabled = false
     var freqMax = -1
     var freqAvg = -1
     var tempC = -1.0
+    var pkgW = -1.0
     var known = false
     let nominalMHz = AppDelegate.nominalClockMHz()
 
@@ -58,15 +60,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         freqItem.isEnabled = false
         tempItem = NSMenuItem(title: "Temp: …", action: nil, keyEquivalent: "")
         tempItem.isEnabled = false
+        powerItem = NSMenuItem(title: "Power: …", action: nil, keyEquivalent: "")
+        powerItem.isEnabled = false
         menu.addItem(stateItem)
         menu.addItem(freqItem)
         menu.addItem(tempItem)
+        menu.addItem(powerItem)
         menu.addItem(NSMenuItem.separator())
         toggleItem = NSMenuItem(title: "Toggle Turbo Boost", action: #selector(toggle), keyEquivalent: "")
         toggleItem.target = self
         menu.addItem(toggleItem)
         menu.addItem(NSMenuItem.separator())
-        showStatsItem = NSMenuItem(title: "Show freq/temp in menu bar", action: #selector(toggleShowStats), keyEquivalent: "")
+        showStatsItem = NSMenuItem(title: "Show stats in menu bar", action: #selector(toggleShowStats), keyEquivalent: "")
         showStatsItem.target = self
         showStatsItem.state = showStatsInBar ? .on : .off
         menu.addItem(showStatsItem)
@@ -105,6 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         stateItem.title = "State: …"
         freqItem.title = "Freq: …"
         tempItem.title = "Temp: …"
+        powerItem.title = "Power: …"
         refresh()
     }
 
@@ -146,6 +152,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let m = s["freqMaxMHz"] as? Int { self.freqMax = m }
                 if let a = s["freqAvgMHz"] as? Int { self.freqAvg = a }
                 if let t = s["tempC"] as? Double { self.tempC = t }
+                if let w = s["pkgW"] as? Double { self.pkgW = w }
                 self.known = true
                 self.render()
             }
@@ -159,6 +166,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var title = disabled ? "TB OFF" : "TB ON"
         if showStatsInBar {
             if freqMax > 0 { title += String(format: " %.1fG", Double(freqMax) / 1000.0) }
+            if pkgW >= 0 { title += String(format: " %.0fW", pkgW) }
             if tempC >= 0 { title += String(format: " %.0f°", tempC) }
         }
         statusItem.button?.title = title
@@ -176,6 +184,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             freqItem.title = "Freq: unreadable (see log)"
         }
         tempItem.title = tempC >= 0 ? String(format: "CPU temp: %.1f °C", tempC) : "CPU temp: n/a"
+        powerItem.title = pkgW >= 0 ? String(format: "Package power: %.1f W", pkgW) : "Package power: n/a"
         toggleItem.title = disabled ? "Enable Turbo Boost" : "Disable Turbo Boost"
     }
 
@@ -221,6 +230,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         stateItem.title = "Helper not installed"
         freqItem.title = "Freq: —"
         tempItem.title = "Temp: —"
+        powerItem.title = "Power: —"
         toggleItem.isEnabled = false
         installItem.title = "Install System Helper…"
         uninstallItem.isEnabled = false

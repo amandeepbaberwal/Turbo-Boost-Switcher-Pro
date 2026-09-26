@@ -23,7 +23,8 @@ static NSString * const TBHelperVersion = @"1.0";
 // stats = @{@"disabled": @(BOOL),
 //           @"freqMaxMHz": @(long, -1 unknown),
 //           @"freqAvgMHz": @(long, -1 unknown),
-//           @"tempC": @(double, -1 unknown)}
+//           @"tempC": @(double, -1 unknown),
+//           @"pkgW": @(double package power in watts, -1 unknown)}
 - (void)getStatsWithReply:(void (^)(NSDictionary * _Nonnull stats))reply;
 
 @end

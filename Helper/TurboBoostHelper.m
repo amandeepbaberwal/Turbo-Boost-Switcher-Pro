@@ -128,7 +128,7 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
                              @"--samplers", @"cpu_power,smc"]
                     output:&out];
     long maxMHz = -1, sumMHz = 0, nCPU = 0;
-    double tempC = -1;
+    double tempC = -1, pkgW = -1;
     if (st == 0 && out) {
         for (NSString *line in [out componentsSeparatedByString:@"\n"]) {
             NSString *t = [line stringByTrimmingCharactersInSet:
@@ -172,6 +172,15 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
                 double v = 0;
                 if ([s scanDouble:&v] && v > 0) tempC = v;
             }
+            // cpu_power sampler: "Intel energy model derived package power (CPUs+GT+SA): 1.15W"
+            if (pkgW < 0 && [t rangeOfString:@"package power"].location != NSNotFound) {
+                NSRange colon = [t rangeOfString:@":" options:NSBackwardsSearch];
+                if (colon.location != NSNotFound) {
+                    NSScanner *s = [NSScanner scannerWithString:[t substringFromIndex:colon.location + 1]];
+                    double v = 0;
+                    if ([s scanDouble:&v] && v >= 0) pkgW = v;
+                }
+            }
         }
     } else {
         NSLog(@"[TBHelper] powermetrics failed (%d)", st);
@@ -179,7 +188,8 @@ static NSString * const kStatePath = @"/Library/Application Support/TurboBoostSw
     reply(@{@"disabled": @(disabled),
             @"freqMaxMHz": @(maxMHz),
             @"freqAvgMHz": @(nCPU ? (long)(sumMHz / nCPU) : -1),
-            @"tempC": @(tempC)});
+            @"tempC": @(tempC),
+            @"pkgW": @(pkgW)});
 }
 
 #pragma mark - boot + wake
