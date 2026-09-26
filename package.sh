@@ -1,10 +1,10 @@
 #!/bin/bash
 # package.sh — rebuild everything from source and assemble the release zip.
-# Usage: ./package.sh   → dist/TurboBoostSwitcherPro-1.0-mac-intel.zip + .sha256
+# Usage: ./package.sh   → dist/MacTurboDisabler-<ver>-mac-intel.{dmg-pkg-zip} + .sha256
 set -euo pipefail
 CLONE_DIR="$(cd "$(dirname "$0")" && pwd)"
 VER="2.0.0"
-STAGE="$CLONE_DIR/dist/stage/TurboBoostSwitcherPro"
+STAGE="$CLONE_DIR/dist/stage/MacTurboDisabler"
 mkdir -p "$CLONE_DIR/build" "$CLONE_DIR/dist"
 
 echo "[1/4] rebuilding helper (Intel)"
@@ -33,9 +33,9 @@ cp "$CLONE_DIR/README.md" "$CLONE_DIR/NOTICE" "$CLONE_DIR/LICENSE" "$STAGE/"
 chmod +x "$STAGE/install.sh" "$STAGE/uninstall.sh"
 
 echo "[3/4] zipping"
-ZIP="$CLONE_DIR/dist/TurboBoostSwitcherPro-${VER}-mac-intel.zip"
+ZIP="$CLONE_DIR/dist/MacTurboDisabler-${VER}-mac-intel.zip"
 rm -f "$ZIP"
-(cd "$CLONE_DIR/dist/stage" && zip -qr "$ZIP" TurboBoostSwitcherPro)
+(cd "$CLONE_DIR/dist/stage" && zip -qr "$ZIP" MacTurboDisabler)
 shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
 
 echo "[4/5] building .pkg installer (double-clickable)"
@@ -66,11 +66,11 @@ chmod 544 "$PKGROOT/Library/PrivilegedHelperTools/com.local.TurboBoostSwitcher.h
 chmod 755 "$PKGROOT/Library/Application Support/TurboBoostSwitcher/voltageshift"
 chmod 644 "$PKGROOT/Library/LaunchDaemons/com.local.TurboBoostSwitcher.helper.plist" \
           "$PKGROOT/Library/LaunchAgents/com.local.TurboBoostMenu.plist"
-PKG="$CLONE_DIR/dist/TurboBoostSwitcherPro-${VER}-mac-intel.pkg"
+PKG="$CLONE_DIR/dist/MacTurboDisabler-${VER}-mac-intel.pkg"
 rm -f "$PKG"
 pkgbuild --root "$PKGROOT" \
   --scripts "$CLONE_DIR/pkg/scripts" \
-  --identifier com.local.turboboostswitcher.pro \
+  --identifier com.local.macturbodisabler \
   --version "$VER" \
   --install-location / \
   "$PKG"
