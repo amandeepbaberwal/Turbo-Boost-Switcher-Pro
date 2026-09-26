@@ -23,7 +23,13 @@ killall TurboMenu 2>/dev/null || true
 rm -rf "$OLD_APP"
 
 echo "[2/4] assembling .app"
-rm -rf "$APP"
+rm -rf "$APP" 2>/dev/null || true
+if [ -e "$APP" ]; then
+  echo "Cannot replace $APP (root-owned, probably from the .pkg install)."
+  echo "Run once: sudo rm -rf $APP /Applications/TurboMenu.app"
+  echo "Then re-run this script."
+  exit 1
+fi
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$CLONE_DIR/build/MacTurboDisabler" "$APP/Contents/MacOS/"
 cp "$CLONE_DIR/Menu/Info.plist" "$APP/Contents/"
