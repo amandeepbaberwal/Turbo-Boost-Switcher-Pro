@@ -3,7 +3,7 @@
 No Xcode project required for testing. Direct clang build (Intel + arm64):
 
 ```bash
-cd /Users/amandeep/tbd/tbs-pro-clone
+cd /Users/amandeep/tbd/turbomenu
 mkdir -p build
 xcrun clang -O2 -fobjc-arc \
   -I Shared \
