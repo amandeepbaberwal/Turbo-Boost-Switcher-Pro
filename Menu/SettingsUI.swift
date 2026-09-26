@@ -94,6 +94,8 @@ class SettingsWC: NSWindowController {
         row.spacing = 8
         applyBtn = NSButton(title: "Apply", target: self, action: #selector(applyPL))
         row.addView(applyBtn, in: .leading)
+        let stock = NSButton(title: "Restore Stock Limits", target: self, action: #selector(restoreStock))
+        row.addView(stock, in: .leading)
         let recheck = NSButton(title: "Recheck", target: self, action: #selector(refreshAll))
         row.addView(recheck, in: .leading)
         stack.addView(row, in: .leading)
@@ -183,6 +185,18 @@ class SettingsWC: NSWindowController {
     }
 
     @objc func applyPL() {
+        apply(a: Int(pl1Slider.doubleValue), b: Int(pl2Slider.doubleValue))
+    }
+
+    @objc func restoreStock() {
+        // Firmware stock on this chassis; other chips clamp + report truth.
+        pl1Slider.doubleValue = 100
+        pl2Slider.doubleValue = 125
+        sliderMoved()
+        apply(a: 100, b: 125)
+    }
+
+    func apply(a: Int, b: Int) {
         guard let app = app else { return }
         guard app.helperInstalled else {
             appliedLbl.stringValue = "Helper not installed — nothing can apply without it."
@@ -192,7 +206,6 @@ class SettingsWC: NSWindowController {
             appliedLbl.stringValue = "Kext not loaded — do the Setup steps above, then Recheck."
             return
         }
-        let a = Int(pl1Slider.doubleValue), b = Int(pl2Slider.doubleValue)
         applyBtn.isEnabled = false
         appliedLbl.stringValue = "Applying…"
         let c = app.connect()
