@@ -145,7 +145,7 @@ class SettingsWC: NSWindowController {
         }
         // 1. SIP kext exemption (unprivileged read)
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/sbin/csrutil")
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/csrutil")
         p.arguments = ["status"]
         let pipe = Pipe()
         p.standardOutput = pipe
