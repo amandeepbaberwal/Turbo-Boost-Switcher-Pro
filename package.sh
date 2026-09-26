@@ -3,7 +3,7 @@
 # Usage: ./package.sh   → dist/TurboBoostSwitcherPro-1.0-mac-intel.zip + .sha256
 set -euo pipefail
 CLONE_DIR="$(cd "$(dirname "$0")" && pwd)"
-VER="1.0"
+VER="1.1.0"
 STAGE="$CLONE_DIR/dist/stage/TurboBoostSwitcherPro"
 mkdir -p "$CLONE_DIR/build" "$CLONE_DIR/dist"
 

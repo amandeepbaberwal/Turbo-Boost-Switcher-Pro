@@ -6,7 +6,7 @@ frequency, and temperature. No password prompts after the one install.
 
 ## Install from a release (Intel Macs only)
 
-1. Download `TurboBoostSwitcherPro-1.0-mac-intel.pkg` from Releases.
+1. Download `TurboBoostSwitcherPro-1.1.0-mac-intel.pkg` from Releases.
 2. Double-click it (first time: right-click → Open, it's an ad-hoc signed
    community build). The Installer asks for your password once.
 3. Look for `TB OFF` top-right. Sleep/wake to confirm: no prompt, ever.

@@ -4,7 +4,7 @@
 #import <Foundation/Foundation.h>
 
 static NSString * const TBHelperMachServiceName = @"com.local.TurboBoostSwitcher.helper";
-static NSString * const TBHelperVersion = @"1.0";
+static NSString * const TBHelperVersion = @"1.1.0";
 
 @protocol TurboBoostHelperProtocol
 
