@@ -177,8 +177,8 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
 }
 
 - (BOOL)applyPowerLimitsPL1:(long)pl1 PL2:(long)pl2 msg:(NSString **)msg {
-    if (pl1 < 10) pl1 = 10; if (pl1 > 125) pl1 = 125;
-    if (pl2 < 15) pl2 = 15; if (pl2 > 200) pl2 = 200;
+    if (pl1 < 5) pl1 = 5; if (pl1 > 125) pl1 = 125;
+    if (pl2 < 10) pl2 = 10; if (pl2 > 200) pl2 = 200;
     NSString *m = nil;
     if (![self ensureVSKext:&m]) {
         if (msg) *msg = [@"VS kext unavailable: " stringByAppendingString:m ?: @"-"];
@@ -224,13 +224,24 @@ static NSString * const kVSKextBundleID = @"com.sicreative.VoltageShift";
     [self ensurePLState];
     NSString *msg = nil;
     BOOL ok = [self applyPowerLimitsPL1:pl1 PL2:pl2 msg:&msg];
-    if (ok) [self persistPL1:pl1 PL2:pl2];
+    if (ok) {
+        [self persistPL1:pl1 PL2:pl2];
+        // Read back what the chip actually accepted (it may clamp).
+        long r1 = 0, r2 = 0;
+        if ([self readLivePowerLimitsPL1:&r1 PL2:&r2]) {
+            msg = [NSString stringWithFormat:@"%@ | chip reports PL1:%ldW PL2:%ldW",
+                   msg ?: @"", r1, r2];
+        }
+    }
     NSLog(@"[TBHelper] setPL %ld/%ld -> %d (%@)", pl1, pl2, ok, msg);
     reply(ok, msg);
 }
 
 - (void)getPowerLimitsWithReply:(void (^)(long, long))reply {
     [self ensurePLState];
+    // Prefer live chip truth when readable; persisted intent otherwise.
+    long r1 = 0, r2 = 0;
+    if ([self readLivePowerLimitsPL1:&r1 PL2:&r2]) { reply(r1, r2); return; }
     reply([self persistedPL1], [self persistedPL2]);
 }
 

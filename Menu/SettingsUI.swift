@@ -81,8 +81,8 @@ class SettingsWC: NSWindowController {
         stack.addView(scroll, in: .leading)
 
         stack.addView(label("Power limits (watts):", bold: true), in: .leading)
-        pl1Slider = sliderRow(stack: stack, name: "PL1 sustained", min: 15, max: 100, valLbl: &pl1Val)
-        pl2Slider = sliderRow(stack: stack, name: "PL2 burst", min: 25, max: 150, valLbl: &pl2Val)
+        pl1Slider = sliderRow(stack: stack, name: "PL1 sustained", min: 5, max: 100, valLbl: &pl1Val)
+        pl2Slider = sliderRow(stack: stack, name: "PL2 burst", min: 10, max: 150, valLbl: &pl2Val)
         appliedLbl = label("Applied: …")
         stack.addView(appliedLbl, in: .leading)
 
@@ -169,7 +169,14 @@ class SettingsWC: NSWindowController {
                 self.applyBtn.isEnabled = true
                 if ok {
                     self.curPL1 = a; self.curPL2 = b
-                    self.appliedLbl.stringValue = "Applied: PL1 \(a)W / PL2 \(b)W (persists across reboot)"
+                    // Show what the chip actually accepted, not just what we asked.
+                    let c2 = app.connect()
+                    app.proxy(c2).getPowerLimitsWithReply { r1, r2 in
+                        c2.invalidate()
+                        DispatchQueue.main.async {
+                            self.appliedLbl.stringValue = "Chip reports: PL1 \(r1)W / PL2 \(r2)W (persists across reboot)"
+                        }
+                    }
                     app.refresh()
                 } else {
                     self.appliedLbl.stringValue = "Failed: \(msg ?? "kext missing? run Setup steps")"
