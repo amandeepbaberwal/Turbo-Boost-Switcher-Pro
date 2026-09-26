@@ -6,8 +6,12 @@ CLONE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP=/Applications/TurboMenu.app
 AGENT=~/Library/LaunchAgents/com.local.TurboBoostMenu.plist
 
-echo "[1/4] compiling"
+echo "[1/4] compiling helper + menu"
 mkdir -p "$CLONE_DIR/build"
+xcrun clang -O2 -fobjc-arc -Wno-nullability-completeness -I "$CLONE_DIR/Shared" \
+  -framework Foundation -framework IOKit \
+  "$CLONE_DIR/Helper/main.m" "$CLONE_DIR/Helper/TurboBoostHelper.m" \
+  -o "$CLONE_DIR/build/tbhelper"
 xcrun swiftc -O -framework Cocoa "$CLONE_DIR/Menu/"*.swift -o "$CLONE_DIR/build/TurboMenu"
 
 echo "[2/4] assembling .app"
